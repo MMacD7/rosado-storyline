@@ -1,4 +1,6 @@
-/* Rosado Nights · v0.3.2
+/* Rosado Nights · v0.4.0
+   Level 4 "The Airfield" (v0.4.0): chase (drive.js chase mode) -> airfield fight (fight.js 'airfield' stage, Big Manny + Aces) -> plane ending (js/plane.js).
+   Reached from the Level 3 complete card (CONTINUE TO LEVEL 4) or game/?start=airfield.
    Level 3 "The Alley" (js/fight.js): side-scrolling street brawl vs El Jefe Esteban Lavanda; only reachable from the Level 2 complete card.
    Level 1 "Causeway Chase": drive Richie across the rainy neon bridge to Shred Zeppelin (js/drive.js).
    Level 2 "Reps for Jesus" (the gym):
@@ -7,21 +9,23 @@
    No network, no tracking. localStorage only keeps level-1-done + best combo / best bag time. */
 (function(){
 "use strict";
-var VERSION='0.3.2';
-var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight;
+var VERSION='0.4.0';
+var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight,PLANE=window.RosadoPlane;
 var $=function(id){return document.getElementById(id)};
 var app=$('app'),cv=$('scene'),g=cv.getContext('2d'),buf=document.createElement('canvas'),bg=null,bgW=0;
 var LH=ART.H;
 /* Optional art: put images in game/assets/ and list them here to replace the canvas art (slot boxes are documented in art.js).
    Leave a slot out (or let the file fail to load) and the built-in canvas art is used. Example:
    var SPRITES={'bg':'assets/gym-bg.webp?v=0.1.0','apollo-spot':'assets/apollo-spot.webp?v=0.1.0','richie-bench-down':'assets/richie-bench-down.webp?v=0.1.0'}; */
-var AV='?v=0.3.2',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
+var AV='?v=0.4.0',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
  'richie-idle':'assets/richie-idle.webp'+AV,'apollo-cross':'assets/apollo-cross.webp'+AV,
  'richie-portrait':'assets/richie-portrait.webp'+AV,'apollo-portrait':'assets/apollo-portrait.webp'+AV};
 /* multi-frame sprites (v0.2.1): bench press 0-2, Apollo spot/cheer, boxing guard/guard-low/jab/cross, walk cycle */
 [['richie-press',3],['apollo-spot',2],['apollo-cheer',2],['richie-box',4],['richie-walk',4]].forEach(function(f){for(var i=0;i<f[1];i++)SPRITES[f[0]+'-'+i]='assets/'+f[0]+'-'+i+'.webp'+AV});
 var DSPRITES={car:'assets/drive-car.webp'+AV,biker:'assets/drive-biker.webp'+AV,'biker-lean':'assets/drive-biker-lean.webp'+AV,van:'assets/drive-van.webp'+AV,
- oil:'assets/drive-oil.webp'+AV,spikes:'assets/drive-spikes.webp'+AV,nitro:'assets/drive-nitro.webp'+AV,sky:'assets/drive-sky.webp'+AV,gym:'assets/drive-gym.webp'+AV,'biker-portrait':'assets/biker-portrait.webp'+AV};
+ oil:'assets/drive-oil.webp'+AV,spikes:'assets/drive-spikes.webp'+AV,nitro:'assets/drive-nitro.webp'+AV,sky:'assets/drive-sky.webp'+AV,gym:'assets/drive-gym.webp'+AV,'biker-portrait':'assets/biker-portrait.webp'+AV,
+ supercar:'assets/drive-supercar.webp'+AV,'traffic-0':'assets/drive-traffic-0.webp'+AV,'traffic-1':'assets/drive-traffic-1.webp'+AV,'traffic-2':'assets/drive-traffic-2.webp'+AV,sky4:'assets/drive-sky4.webp'+AV,air:'assets/l4-bg-b.webp'+AV};
+var PSPRITES={};PLANE.SLOTS.forEach(function(k){PSPRITES[k]='assets/'+k+'.webp'+AV});
 
 var FSPRITES={};FIGHT.SLOTS.forEach(function(k){FSPRITES[k]='assets/'+k+'.webp'+AV});
 
@@ -34,7 +38,9 @@ var BAG={target:12,time:45,every:3,
  center:[0.5,0.6,0.42,0.55],perfect:0.035,cdGood:0.18,cdMiss:0.45};
 
 /* ---------- state ---------- */
-var S,musicOn=true,paused=false,started=false,last=0,clock=0,level=1,dsnap=null;
+var S,musicOn=true,paused=false,started=false,last=0,clock=0,level=1,dsnap=null,L4='';
+/* L4: '' outside Level 4, else 'intro' | 'chase' | 'fight' | 'plane' | 'done'. The engine level stays 1 (drive) / 3 (fight) / 4 (plane) so the existing controls are reused */
+function setL4(ph){L4=ph||'';app.dataset.l4=L4}
 function fresh(){return {phase:'intro',rep:0,h:0,hDisp:0,peak:0,lastTap:-9,taps:0,tapsPerRep:[],timer:0,
  hits:0,combo:0,bestCombo:0,misses:0,perfects:0,timeLeft:BAG.time,m:0,cd:0,punchT:-1,bagAng:0,bagVel:0,bagFlash:0,bagSquash:0,
  parts:[],shake:0,shout:'',shoutT:0,apolloExpr:'smile',richieExpr:'calm',apolloArms:'cross',fistT:0,bagStart:0,record:false,lastPunch:-9,punchSide:0,flash:0,exitX:null,walking:false,story:[]}}
@@ -75,12 +81,12 @@ function talk(lines,done){
 }
 function nextLine(){
  DQ.i++;if(DQ.i>=DQ.lines.length){var d=DQ.done;DQ=null;$('dialog').hidden=true;if(d)d();return}
- var L=DQ.lines[DQ.i],who=$('who');who.textContent=L.who==='richie'?'RICHIE':L.who==='biker'?'BIKER GANG':L.who==='jefe'?'EL JEFE':'FLEXECUTIONER';who.className='who '+L.who;
+ var L=DQ.lines[DQ.i],who=$('who');who.textContent=L.who==='richie'?'RICHIE':L.who==='biker'?'BIKER GANG':L.who==='jefe'?'EL JEFE':L.who==='manny'?'BIG MANNY':L.who==='aces'?'ACES':'FLEXECUTIONER';who.className='who '+L.who;
  if(L.on)L.on();
  face(L.who,L.expr||'smile');DQ.full=L.text;DQ.typed=0;DQ.shownAt=clock;$('line').textContent='';
  if(L.who==='apollo')S.apolloExpr=L.expr||'smile';
 }
-function face(who,expr){if(who==='biker')DRIVE.portrait($('face'));else if(who==='jefe')FIGHT.portrait($('face'));else ART.portrait($('face'),who,expr)}
+function face(who,expr){if(who==='biker')DRIVE.portrait($('face'));else if(who==='jefe'||who==='manny'||who==='aces')FIGHT.portrait($('face'),who);else ART.portrait($('face'),who,expr)}
 function tapDialog(){
  if(!DQ||paused)return;if(clock-DQ.shownAt<0.25)return;
  if(DQ.typed<DQ.full.length){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;return}
@@ -88,7 +94,7 @@ function tapDialog(){
 }
 function typeTick(dt){if(!DQ||DQ.typed>=DQ.full.length)return;var n=Math.min(DQ.full.length,DQ.typed+dt*48);if(Math.floor(n)!==Math.floor(DQ.typed))$('line').textContent=DQ.full.slice(0,Math.floor(n));DQ.typed=n;if(n>=DQ.full.length)$('line').textContent=DQ.full}
 
-var J=function(t){return {who:'jefe',text:t,expr:'smile'}};
+var J=function(t){return {who:'jefe',text:t,expr:'smile'}},Mn=function(t){return {who:'manny',text:t}},Ac=function(t){return {who:'aces',text:t}};
 var A=function(t,e){return {who:'apollo',text:t,expr:e||'smile'}},Rc=function(t,e){return {who:'richie',text:t,expr:e||'smile'}},Bk=function(t,f){return {who:'biker',text:t,on:f}};
 var DLINES={
  intro:[Rc('Gotta get to Shred Zeppelin. Big lift tonight.','calm'),
@@ -116,19 +122,33 @@ var FLINES={
  car:[Rc('Hey! My car!','strain'),Rc('They scratched my car... Escobar\u2019s a dead man.','strain'),Rc('Time to pay Escobar a visit.','calm')],
  lose:[Rc('Oof! Shake it off, Richie. Let\u2019s go again!','smile')]
 };
+/* Level 4 lines (Big Manny and Aces are original characters) */
+var DLINES4={
+ intro:[Rc('Wait... that yellow wedge up ahead. That\u2019s Escobar\u2019s boy.','calm'),
+  Rc('Stay on his tail. Not too close, not too far.','calm'),
+  Rc('Keep the DISTANCE marker in the green. \u25C0 \u25B6 to dodge traffic, BOOST to catch up. Or tap SELF DRIVE.','smile')],
+ lost:[Rc('Lost him! Back to the checkpoint. He won\u2019t shake me twice.','strain')],
+ wreck:[Rc('Whoa! Too much traffic. Back to the checkpoint. Let\u2019s go again!','smile')],
+ arrive:[Rc('A private airfield. Escobar\u2019s got a plane waiting.','calm'),Rc('And a welcome committee by the hangar.','calm')]
+};
+var FLINES4={
+ start:[Rc('Let\u2019s see who\u2019s guarding that plane.','calm'),Rc('Big guys can\u2019t be grabbed, and slick guys dodge punches. KICK them!','smile')],
+ duo:[Mn('Nobody gets on the boss\u2019s plane, old man.'),Ac('Turn around, grandpa. The shades stay on.'),Rc('Old? I just benched 400. Let\u2019s go, fellas.','calm')],
+ duoDown:[Ac('My shades... these were limited edition.'),Mn('Five more minutes, Ma...'),Rc('Nice plane. I\u2019ll take it from here.','smile')]
+};
 
 /* ---------- flow ---------- */
 function begin(lv){
  SFX.unlock();if(musicOn&&T&&T.supported)T.play();
  started=true;$('intro').hidden=true;if(lv===2)startLevel();else startDrive();
 }
-function setLevel(lv){var was=level;level=lv;app.dataset.level=String(lv);document.title=lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
- var a=$('scene');a.setAttribute('aria-label',lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
+function setLevel(lv){var was=level;level=lv;app.dataset.level=String(lv);app.dataset.l4=L4;document.title=L4?'Rosado Nights \u00B7 Level 4: The Airfield':lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
+ var a=$('scene');a.setAttribute('aria-label',L4?'The Airfield: Richie tails the yellow supercar, fights at the hangar and flies off':lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
  if(lv!==3){if(typeof CUT==='object'&&CUT&&CUT.on){CUT.done=true;cutClose()}fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true}if(was!==lv)resize()}
-function cards(){['done','done1','done3','intro3'].forEach(function(id){$(id).hidden=true})}
+function cards(){['done','done1','done3','intro3','intro4','done4'].forEach(function(id){$(id).hidden=true})}
 /* ---------- level 1: the drive ---------- */
 function startDrive(){
- setLevel(1);S=fresh();S.phase='drive';cards();$('record').hidden=true;setMode('');hud(true);dctl(false);DRIVE.intro();setSelf(false);
+ setL4('');DRIVE.setMode('causeway');setLevel(1);S=fresh();S.phase='drive';cards();$('record').hidden=true;setMode('');hud(true);dctl(false);DRIVE.intro();setSelf(false);
  talk(DLINES.intro,function(){DRIVE.go();dctl(true);shout('GO! GO! GO!',1.2)});
 }
 function dctl(on){app.dataset.dctl=on?'1':'0'}
@@ -140,21 +160,33 @@ DRIVE.on('boost',function(){shout('N2O BOOST!',0.8)});
 DRIVE.on('nitro',function(){shout('+N2O',0.6)});
 DRIVE.on('smash',function(){shout('SMASHED IT!',0.7)});
 DRIVE.on('wrecking',function(){dctl(false);shout('WHOA!',1.2)});
-DRIVE.on('wreck',function(){if(DRIVE.self())setTimeout(function(){if(DQ&&DRIVE.self()&&!paused){DQ.typed=DQ.full.length;nextLine()}},1800);talk(DLINES.wreck,function(){DRIVE.retry();dctl(true);shout('FROM THE CHECKPOINT!',1.3)})});
-DRIVE.on('arrive',function(){dctl(false);shout('SHRED ZEPPELIN AHEAD!',1.6)});
-DRIVE.on('finish',function(st){SFX.fanfare();store.set({l1done:true});talk(DLINES.arrive,function(){showDone1(st)})});
+function selfSkip(){if(DRIVE.self())setTimeout(function(){if(DQ&&DRIVE.self()&&!paused){DQ.typed=DQ.full.length;nextLine()}},1800)}
+DRIVE.on('wreck',function(){selfSkip();talk(L4?DLINES4.wreck:DLINES.wreck,function(){DRIVE.retry();dctl(true);shout('FROM THE CHECKPOINT!',1.3)})});
+DRIVE.on('arrive',function(){dctl(false);shout(L4?'THE AIRFIELD!':'SHRED ZEPPELIN AHEAD!',1.6)});
+DRIVE.on('finish',function(st){if(L4==='chase'){S.chase4=st;SFX.chime&&SFX.chime();selfSkip();talk(DLINES4.arrive,startFight4);return}SFX.fanfare();store.set({l1done:true});talk(DLINES.arrive,function(){showDone1(st)})});
+/* Level 4 chase events */
+DRIVE.on('losing',function(){shout('LOSING HIM! BOOST!',1.2)});
+DRIVE.on('losing2',function(){dctl(false);shout('YOU LOST HIM!',1.4)});
+DRIVE.on('lost',function(){selfSkip();talk(DLINES4.lost,function(){DRIVE.retry();dctl(true);shout('FROM THE CHECKPOINT!',1.3)})});
+DRIVE.on('spotted',function(){shout('TOO CLOSE! HE SPOTTED YOU!',1.3)});
+DRIVE.on('surge',function(){shout('HE\u2019S SPEEDING UP!',1)});
+DRIVE.on('shove',function(){shout('OUTTA THE WAY!',0.8)});
 function showDone1(st){
  S.phase='done1';hud(false);SFX.engine(0);
  $('stats1').innerHTML='Bikers bumped: <b>'+st.bumps+'</b> \u00B7 Oil &amp; spikes dodged: <b>'+st.dodged+'</b><br>Time: <b>'+st.time.toFixed(1)+'s</b> \u00B7 Health left: <b>'+Math.round(DRIVE.snap().health)+'%</b>'+(st.retries?' \u00B7 retries: '+st.retries:'');
  $('done1').hidden=false;
 }
-var dh={};function setTxt(id,v){if(dh[id]!==v){dh[id]=v;$(id).textContent=v}}function setW(id,v){v=Math.round(v*1000)/10;if(dh[id]!==v){dh[id]=v;$(id).style.width=v+'%'}}
+var dh={};function setL(id,v){v=Math.round(v*1000)/10;if(dh['L'+id]!==v){dh['L'+id]=v;$(id).style.left=v+'%'}}function setTxt(id,v){if(dh[id]!==v){dh[id]=v;$(id).textContent=v}}function setW(id,v){v=Math.round(v*1000)/10;if(dh[id]!==v){dh[id]=v;$(id).style.width=v+'%'}}
 function driveHud(){var d=DRIVE.snap();dsnap=d;
  var seg=Math.ceil(d.health/10);if(dh.seg!==seg){dh.seg=seg;var c=$('hpbar').children;for(var i=0;i<c.length;i++)c[i].className=i<seg?(seg<=3?'on low':'on'):''}
  setTxt('dist',(d.dist/1000).toFixed(2));setW('distFill',1-d.dist/DRIVE.CFG.dist);
  setTxt('kmh',String(Math.round(d.kmh)));setTxt('gear',String(Math.max(1,Math.min(6,Math.floor(d.kmh/38)+1))));setW('n2oFill',d.meter);
  var rdy=d.meter>=DRIVE.CFG.boostMin&&d.boost<=0&&d.st==='run';if(dh.rdy!==rdy){dh.rdy=rdy;$('boost').classList.toggle('off',!rdy)}
  if(dh.on!==(d.boost>0)){dh.on=d.boost>0;app.classList.toggle('boosting',dh.on)}
+ if(d.mode==='chase'){var GM=160,gi=d.gapIn;setTxt('gapv',String(Math.round(d.gap)));setL('gapMark',Math.min(1,d.gap/GM));
+  if(dh.gz!==gi[0]){dh.gz=gi[0];$('gapZone').style.left=(gi[0]/GM*100)+'%';$('gapZone').style.width=((gi[1]-gi[0])/GM*100)+'%'}
+  var cls=d.gap<DRIVE.CFG.gapClose||d.gap>d.gapWarn?'bad':d.inRange?'ok':'warn',msg=d.gap<DRIVE.CFG.gapClose?'TOO CLOSE!':d.gap>d.gapWarn?'LOSING HIM!':d.inRange?'IN RANGE':d.gap<gi[0]?'BACK OFF':'CATCH UP';
+  setTxt('gapMsg',msg);if(dh.gc!==cls){dh.gc=cls;$('gapbox').className='dbox2 gapbox '+cls}}
 }
 /* ---------- level 3: the alley ---------- */
 function fctl(on){app.dataset.fctl=on?'1':'0';if(!on){FIGHT.move(0,0);stickReset();keys={}}}
@@ -162,7 +194,7 @@ function showIntro3(){SFX.unlock();$('intro').hidden=true;setLevel(3);S=fresh();
  $('intro3').hidden=false;themeOn()}
 /* v0.3.2: the alley plays the usual Rosado Nights theme (same song as the menu, Level 1 and Level 2), boss and ending included */
 function themeOn(){if(musicOn&&T&&T.supported)T.play()}
-function startFight(){SFX.unlock();$('intro').hidden=true;started=true;setLevel(3);S=fresh();S.phase='fight';cards();hud(true);setMode('');SFX.engine(0);FIGHT.start();dh={};
+function startFight(){SFX.unlock();$('intro').hidden=true;started=true;setL4('');duoBar(false);setLevel(3);S=fresh();S.phase='fight';cards();hud(true);setMode('');SFX.engine(0);FIGHT.start();dh={};
  themeOn();ART.portrait($('fface'),'richie','calm');FIGHT.portrait($('bface'));$('bossbar').hidden=true;
  setTimeout(function(){if(level===3&&S.phase==='fight'&&FIGHT.snap().st==='ready'||level===3&&S.phase==='fight'&&FIGHT.snap().st==='intro')talk(FLINES.start,function(){FIGHT.go();fctl(true);shout('FIGHT!',1.2)})},1300)}
 function autoTalk(){if(!FIGHT.auto())return;setTimeout(function(){if(DQ&&level===3&&FIGHT.auto()&&!paused){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;SFX.blip();nextLine();autoTalk()}else if(DQ&&level===3&&FIGHT.auto())autoTalk()},1700)}
@@ -177,6 +209,10 @@ FIGHT.on('pickup',function(k){shout(k==='empanada'?'EMPANADAS! +HEALTH':k==='wat
 FIGHT.on('life',function(n){shout('BACK ON YOUR FEET!',1.2)});
 FIGHT.on('lose',function(){fctl(false);ftalk(FLINES.lose,function(){FIGHT.retryWave();fctl(true);shout('TRY AGAIN!',1.2)})});
 FIGHT.on('bossDown',function(){fctl(false);SFX.fanfare();shout('K.O.!',1.6);setTimeout(function(){if(level!==3)return;ftalk(FLINES.bossDown,function(){$('bossbar').hidden=true;playCut()})},1600)});
+FIGHT.on('duo',function(){if(L4!=='fight')return;fctl(false);$('bossbar').hidden=false;ftalk(FLINES4.duo,function(){FIGHT.hold(false);fctl(true);shout('TAG TEAM!',1.3)})});
+FIGHT.on('duoOne',function(o){shout((o.left==='manny'?'BIG MANNY':'ACES')+' IS MAD!',1.3)});
+FIGHT.on('duoDown',function(){fctl(false);SFX.fanfare();shout('DOUBLE K.O.!',1.6);setTimeout(function(){if(L4!=='fight')return;ftalk(FLINES4.duoDown,function(){$('bossbar').hidden=true;FIGHT.board();shout('TO THE PLANE \u2192',1.6)})},1600)});
+FIGHT.on('boarded',function(st){if(L4!=='fight')return;S.fight4=st;startPlane()});
 FIGHT.on('carSeen',function(){ftalk(FLINES.car,function(){FIGHT.driveOff();SFX.engine(0.5);shout('NEXT: LEVEL 4 \u00B7 THE AIRFIELD',2)})});
 FIGHT.on('finish',function(st){SFX.engine(0);showDone3(st)});
 /* v0.3.2: Mike's Level 3 -> Level 4 cutscene video. It replaces the in-game car ending after El Jefe's KO;
@@ -204,6 +240,23 @@ function showDone3(st){S.phase='done3';S.shoutT=0;$('shout').classList.remove('o
  var b=store.get(),best=Math.max(b.l3best||0,st.score);store.set({l3done:true,l3best:best});
  $('stats3').innerHTML='Score: <b>'+st.score+'</b> \u00B7 Bodyguards down: <b>'+st.kos+'</b><br>Time: <b>'+st.time.toFixed(1)+'s</b> \u00B7 Lives left: <b>'+st.lives+'</b>'+(st.stats.retries?' \u00B7 retries: '+st.stats.retries:'')+'<br><small>Your best: '+best+'</small>';
  $('done3').hidden=false;var c=$('done3').querySelector('.cardin');if(c){c.classList.remove('burst');void c.offsetWidth;c.classList.add('burst')}}
+/* ---------- level 4: the airfield ---------- */
+function duoBar(on){$('duo2').hidden=!on;$('bname').textContent=on?FIGHT.TYPES.manny.name:'EL JEFE ESTEBAN LAVANDA';FIGHT.portrait($('bface'),on?'manny':'jefe');if(on)FIGHT.portrait($('bface2'),'aces');app.classList.toggle('duo',!!on)}
+function l4Reset(){SFX.unlock();$('intro').hidden=true;started=true;DQ=null;$('dialog').hidden=true;cards();setMode('');app.classList.remove('boosting');$('record').hidden=true;dh={};themeOn()}
+function showIntro4(){l4Reset();setL4('intro');DRIVE.setMode('chase');setLevel(1);S=fresh();S.phase='intro4';hud(false);dctl(false);setSelf(false);SFX.engine(0);DRIVE.intro();$('intro4').hidden=false}
+function startChase(){l4Reset();setL4('chase');DRIVE.setMode('chase');setLevel(1);S=fresh();S.phase='drive';S.l4T0=clock;hud(true);dctl(false);DRIVE.intro();setSelf(false);
+ talk(DLINES4.intro,function(){DRIVE.go();dctl(true);shout('STAY ON HIM!',1.2)})}
+function startFight4(){var keep={chase4:S.chase4,l4T0:S.l4T0};l4Reset();setL4('fight');setSelf(false);dctl(false);setLevel(3);S=fresh();S.chase4=keep.chase4;S.l4T0=keep.l4T0;S.phase='fight';hud(true);SFX.engine(0);FIGHT.start('airfield');
+ ART.portrait($('fface'),'richie','calm');duoBar(true);$('bossbar').hidden=true;
+ setTimeout(function(){var st=FIGHT.snap().st;if(L4==='fight'&&level===3&&S.phase==='fight'&&(st==='ready'||st==='intro'))ftalk(FLINES4.start,function(){FIGHT.go();fctl(true);shout('FIGHT!',1.2)})},1300)}
+function startPlane(){var keep={chase4:S.chase4,fight4:S.fight4,l4T0:S.l4T0};setL4('plane');fctl(false);setAuto(false);setLevel(4);S=fresh();for(var k in keep)S[k]=keep[k];S.phase='plane';hud(true);SFX.engine(0);PLANE.start();themeOn();
+ setTimeout(function(){if(L4==='plane')shout('WHEELS UP!',1.4)},3200)}
+PLANE.on('done',function(){if(L4==='plane')showDone4()});
+function showDone4(){setL4('done');S.phase='done4';S.shoutT=0;$('shout').classList.remove('on');hud(false);SFX.fanfare();
+ var c=S.chase4||{stats:{}},f=S.fight4||{score:0,stats:{}},b=store.get(),best=Math.max(b.l4best||0,f.score||0);store.set({l4done:true,l4best:best});
+ var cs=DRIVE.snap().stats||{};
+ $('stats4').innerHTML='Chase: <b>'+(cs.time||0).toFixed(1)+'s</b> \u00B7 traffic dodged: <b>'+(cs.passed||0)+'</b>'+(cs.retries?' \u00B7 retries: '+cs.retries:'')+'<br>Fight score: <b>'+(f.score||0)+'</b> \u00B7 lives left: <b>'+(f.lives==null?3:f.lives)+'</b><br><small>Your best: '+best+'</small>';
+ $('done4').hidden=false;var cc=$('done4').querySelector('.cardin');if(cc){cc.classList.remove('burst');void cc.offsetWidth;cc.classList.add('burst')}}
 function fightHud(){var f=FIGHT.snap();if(!f)return;
  var rg=f.rage/f.rageMax;setW('fragei',rg);var full=rg>=1;if(dh.rfull!==full){dh.rfull=full;$('frage').classList.toggle('full',full);$('fSpec').classList.toggle('ready',full)}
  setW('fhpi',Math.max(0,f.player.hp)/100);var low=f.player.hp<=30;if(dh.low!==low){dh.low=low;$('fhp').classList.toggle('low',low)}
@@ -211,6 +264,7 @@ function fightHud(){var f=FIGHT.snap();if(!f)return;
  var wt=f.boss?(f.boss.hp>0?'BOSS':''):f.wave>0?'WAVE '+Math.min(f.wave,f.waves)+'/'+f.waves:'';setTxt('wtag',wt);
  var eb=f.ehud&&!(f.boss&&f.ehud.name===FIGHT.TYPES.jefe.name);if(dh.eb!==eb){dh.eb=eb;$('ebar').hidden=!eb}if(eb){setTxt('ename',f.ehud.name);setW('ehp',f.ehud.hp/f.ehud.max)}
  if(f.boss){setW('bhp',f.boss.hp/f.boss.max)}
+ if(f.duo){f.duo.forEach(function(e){setW(e.type==='manny'?'bhp':'bhp2',Math.max(0,e.hp)/e.max)})}
  var go=!!f.go;if(dh.go!==go){dh.go=go;$('goArrow').hidden=!go}}
 function setAuto(on){FIGHT.setAuto(on);var b=$('autoBtn');b.setAttribute('aria-pressed',on?'true':'false');$('autoState').textContent=on?'ON':'OFF';app.classList.toggle('autofight',!!on);$('autoInd').hidden=!on;if(on&&DQ&&level===3)autoTalk()}
 function toggleAuto(){if(paused||level!==3)return;SFX.unlock();SFX.blip();var on=!FIGHT.auto();setAuto(on);shout(on?'AUTO FIGHT ON':'AUTO FIGHT OFF',0.9)}
@@ -298,6 +352,7 @@ function confetti(n){var C=['#ff3ad8','#29d6ff','#ffd23a','#ffffff'];for(var i=0
 function update(dt){
  clock+=dt;typeTick(dt);
  if(S.shoutT>0){S.shoutT-=dt;if(S.shoutT<=0)$('shout').classList.remove('on')}
+ if(level===4){PLANE.update(dt);return}
  if(level===3){FIGHT.update(dt);fightHud();return}
  if(level===1){DRIVE.update(dt);driveHud();var d=dsnap;SFX.engine(S.phase==='drive'&&d.st!=='done'?Math.max(0.05,d.kmh/200):0,d.boost>0);return}
  if(S.phase==='press'){
@@ -341,6 +396,7 @@ function update(dt){
 var flickT=0;
 function render(){
  if(!bg)return;var b=buf.getContext('2d');
+ if(level===4){b.setTransform(1,0,0,1,0,0);b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);PLANE.render(b,W,clock);blit();return}
  if(level===3){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);FIGHT.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
  if(level===1){b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);DRIVE.render(b,W,clock,T&&T.isPlaying()?T.level():0);blit();return}
  var strain=S.phase==='press'&&clock-S.lastTap<IDLE?1:0,amp=S.shake*(1+S.rep*0.5);
@@ -378,7 +434,7 @@ $('startL2').addEventListener('click',function(){begin(2)});
 $('next2').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('again1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 $('toL1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
-function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'}
+function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'&&S.phase!=='intro4'&&S.phase!=='done4'}
 function dsteer(dir){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();if(DRIVE.self()){setSelf(false);shout('SELF DRIVE OFF',0.9)}if(DRIVE.steer(dir))SFX.blip()}
 function setSelf(on){DRIVE.setSelf(on);var b=$('selfBtn');b.setAttribute('aria-pressed',on?'true':'false');$('selfState').textContent=on?'ON':'OFF';app.classList.toggle('selfdrive',!!on);$('selfInd').hidden=!on}
 function toggleSelf(){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();SFX.blip();var on=!DRIVE.self();setSelf(on);shout(on?'SELF DRIVE ON':'SELF DRIVE OFF',0.9)}
@@ -397,12 +453,16 @@ act.addEventListener('contextmenu',function(e){e.preventDefault()});
 $('dialog').addEventListener('click',tapDialog);
 $('pauseBtn').addEventListener('click',function(){if(canPause())setPaused(true)});
 $('resume').addEventListener('click',function(){setPaused(false)});
-$('restart').addEventListener('click',function(){setPaused(false);DQ=null;$('dialog').hidden=true;if(level===1)startDrive();else if(level===3)startFight();else startLevel()});
+$('restart').addEventListener('click',function(){setPaused(false);DQ=null;$('dialog').hidden=true;if(L4==='fight')startFight4();else if(L4)startChase();else if(level===1)startDrive();else if(level===3)startFight();else startLevel()});
 $('music').addEventListener('click',function(){musicOn=!musicOn;musicUI()});
 $('again').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('next3').addEventListener('click',function(){started=true;showIntro3()});
 $('start3').addEventListener('click',function(){startFight()});
 $('again3').addEventListener('click',function(){startFight()});
+$('next4').addEventListener('click',function(){showIntro4()});
+$('start4').addEventListener('click',function(){startChase()});
+$('again4').addEventListener('click',function(){startChase()});
+$('toL1c').addEventListener('click',function(){SFX.unlock();themeOn();startDrive()});
 $('toL1b').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 [['fAtk','atk'],['fKick','kick'],['fJump','jump'],['fSpec','special']].forEach(function(b){var el=$(b[0]);
  el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('hit');setTimeout(function(){el.classList.remove('hit')},90);fpress(b[1])});
@@ -435,17 +495,19 @@ if(!T||!T.supported){musicOn=false}
 musicUI();hud(false);ctl(false);dctl(false);fctl(false);setLevel(1);resize();if(store.get().l1done)$('startL2').classList.add('unlocked');
 ART.loadSprites(SPRITES,function(){bgW=0;resize();if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 DRIVE.loadSprites(DSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
-FIGHT.loadSprites(FSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);FIGHT.portrait($('bface'))});
+FIGHT.loadSprites(FSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);var duo=L4==='fight';FIGHT.portrait($('bface'),duo?'manny':'jefe');if(duo)FIGHT.portrait($('bface2'),'aces')});
+PLANE.loadSprites(PSPRITES);
 /* the menu's LEVEL 3 box opens game/?start=alley -> straight to the Level 3 intro card (the only entry param) */
-try{if(new URLSearchParams(location.search).get('start')==='alley'){started=true;showIntro3()}}catch(e){}
+/* ...and the LEVEL 4 box opens game/?start=airfield -> the Level 4 intro card */
+try{var q=new URLSearchParams(location.search).get('start');if(q==='alley'){started=true;showIntro3()}else if(q==='airfield'){showIntro4()}}catch(e){}
 requestAnimationFrame(function(ts){last=ts;loop(ts)});
 
 /* test/debug hook (read-only snapshot, no network) */
 window.__rosado={version:VERSION,REPS:REPS,BAG:BAG,IDLE:IDLE,IDLE_MULT:IDLE_MULT,
- snap:function(){var L=bagLevel();return {level:level,drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
+ snap:function(){var L=bagLevel();return {level:level,l4:L4,plane:PLANE.snap(),drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
   timeLeft:S.timeLeft,marker:markerPos(S.m),dir:(S.m%2)<1?1:-1,zone:[BAG.center[L]-BAG.zone[L],BAG.center[L]+BAG.zone[L]],speed:BAG.speed[L],cd:S.cd,paused:paused,dialog:!!DQ,line:DQ?DQ.full:'',
   musicOn:musicOn,music:!!(T&&T.isPlaying()),cut:(function(){var v=$('cutv');return {on:CUT.on,state:CUT.state,how:CUT.how,fallback:CUT.fallback,visible:!$('cut').hidden,t:v.currentTime,paused:v.paused,src:v.getAttribute('src')||'',tap:!$('cutTap').hidden}})(),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
  loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightBox:function(i){var f=FIGHT.snap();if(!f)return null;var e=i<0?f.player:f.enemies[i];if(!e)return null;var m=FIGHT.META[e.frame],hw=m?Math.max(m[2],m[0]-m[2])/2:e.h*0.3,r=$('view').getBoundingClientRect(),X=function(x){return r.left+ox+(x-f.cam)*scale},Y=function(y){return r.top+oy+y*scale};
   return {l:X(e.x-hw),r:X(e.x+hw),t:Y(e.y-(e.z||0)-e.h),b:Y(e.y-(e.z||0)),feet:Y(e.y),scale:scale,h:e.h}},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,
- dev:DRIVE.dev,CFG:DRIVE.CFG};
+ dev:DRIVE.dev,CFG:DRIVE.CFG,pdev:PLANE.dev,planeSpriteMode:function(){return PLANE.spriteMode()}};
 })();
