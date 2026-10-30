@@ -513,6 +513,11 @@ button:focus-visible,a:focus-visible{outline:4px solid #fff;outline-offset:3px}
 .endtxt span{font:900 italic clamp(18px,3.6vw,28px)/1 var(--neo);letter-spacing:.12em;color:#9fe8ff;text-shadow:0 0 10px var(--blue)}
 .endtxt em{font:900 italic clamp(16px,3vw,24px)/1 var(--neo);letter-spacing:.16em;color:var(--pink);text-shadow:0 0 12px var(--pink);animation:blink 1.4s steps(2) infinite}
 #done6 .cardin{background:linear-gradient(180deg,rgba(60,20,40,.9),rgba(20,8,40,.92))}
+/* v0.6.2: the Rosado Nights 2 teaser button on the ending card */
+#done6 .n2btn{display:block;margin:4px auto 12px;min-height:56px;padding:8px 22px;max-width:100%;white-space:normal;line-height:1.15;font-size:clamp(15px,2.6vw,20px);letter-spacing:.06em;
+ background:linear-gradient(90deg,#ff2d95,#7a3cff);color:#fff;border-color:#ffd1f0;box-shadow:0 0 14px rgba(255,45,149,.6),0 0 26px rgba(122,60,255,.45)}
+#done6 .n2btn:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media (max-height:500px) and (orientation:landscape){#done6 .endtxt{gap:2px;margin:4px 0}#done6 .endtxt b{font-size:26px}#done6 .endtxt span{font-size:16px}#done6 .endtxt em{font-size:14px}#done6 .n2btn{margin:2px auto 4px;min-height:44px;padding:4px 18px;font-size:14px}#done6 h1.small{margin:0;font-size:30px}#done6 .cardin{max-width:740px;gap:5px;padding:8px 18px}#done6 .btnrow .big{min-width:180px;min-height:50px;white-space:nowrap;font-size:22px;padding:0 22px}#done6 .btnrow .mid,#done6 .btnrow .btnlink{min-width:140px;min-height:46px}#done6 .stats{font-size:12px;line-height:1.25;margin:0}}
 @media (max-height:500px) and (orientation:landscape){
  #estick{width:112px;height:112px}#eknob{width:50px;height:50px;margin:-25px 0 0 -25px}
  .erich canvas{width:28px;height:28px}
@@ -549,3 +554,5 @@ button:focus-visible,a:focus-visible{outline:4px solid #fff;outline-offset:3px}
 }
 @media (prefers-reduced-motion:reduce){.slam.in .slamin{animation:none;opacity:1;transform:skewX(-10deg)}.endtxt em,.mbar.rage.full{animation:none}}
 #app[data-l6="finale"] #eAutoInd{display:none!important}
+/* v0.6.2: ending card + teaser button on short portrait phones (iPhone SE) */
+@media (orientation:portrait) and (max-height:700px){#done6 .n2btn{min-height:48px;margin:2px auto 6px;font-size:15px}#done6 .endtxt{gap:3px}#done6 .endtxt b{font-size:26px}#done6 .stats{font-size:12px;line-height:1.25}#done6 .btnrow .big{min-height:58px}#done6 .btnrow{gap:7px}}
