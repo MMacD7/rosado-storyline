@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="Rosado Nights · Level 1: Causeway Chase, drive Richie across the neon bridge to Shred Zeppelin. Level 2: Reps for Jesus, bench press 400 lbs, then hit the heavy bag. Level 3: The Alley, a neon street brawl with El Jefe's linen-suited bodyguards.">
+<meta name="description" content="Rosado Nights · Level 1: Causeway Chase, drive Richie across the neon bridge to Shred Zeppelin. Level 2: Reps for Jesus, bench press 400 lbs, then hit the heavy bag. Level 3: The Alley, a neon street brawl with El Jefe's linen-suited bodyguards. Level 4: The Airfield, tail the yellow supercar, beat Big Manny and Aces, and fly off in the plane.">
 <title>Rosado Nights · Level 1: Causeway Chase</title>
-<link rel="stylesheet" href="css/game.css?v=0.3.2">
+<link rel="stylesheet" href="css/game.css?v=0.4.0">
 </head>
 <body>
 <div id="app" data-phase="intro" data-level="1">
@@ -28,7 +28,8 @@
   </div>
  <div id="dhud" aria-live="off">
   <div class="dbox2 hp"><div class="dlab"><span class="heart" aria-hidden="true">&#9829;</span> HEALTH</div><div id="hpbar" aria-label="Health"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-  <div class="dbox2 togym"><div class="dlab">DISTANCE TO GYM</div><div class="dval"><b id="dist">3.00</b><small>KM</small></div><div class="dbar"><i id="distFill"></i></div></div>
+  <div class="dbox2 togym"><div class="dlab"><span class="l1t">DISTANCE TO GYM</span><span class="l4t">TO THE AIRFIELD</span></div><div class="dval"><b id="dist">3.00</b><small>KM</small></div><div class="dbar"><i id="distFill"></i></div></div>
+  <div class="dbox2 gapbox" id="gapbox"><div class="dlab">DISTANCE <b id="gapv">60</b><small>M</small></div><div class="gapbar" aria-label="Distance to the yellow supercar: keep the marker in the green"><em id="gapZone"></em><i id="gapMark"></i></div><div class="gapmsg" id="gapMsg">IN RANGE</div></div>
  </div>
  <button id="selfBtn" type="button" aria-pressed="false" aria-label="Self drive: the car steers itself">
   <svg class="wheel" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M3.2 10.5h6.3M14.5 10.5h6.3M12 14.6v6.6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
@@ -56,7 +57,8 @@
   <div class="ebar" id="ebar" hidden><span id="ename">RAFA</span><div class="fbar small"><i id="ehp"></i></div></div>
   <div class="wtag" id="wtag">WAVE 1/3</div>
  </div>
- <div id="bossbar" hidden><canvas id="bface" width="48" height="48" aria-hidden="true"></canvas><div class="bb"><div class="bname">EL JEFE ESTEBAN LAVANDA</div><div class="fbar boss"><i id="bhp"></i></div></div></div>
+ <div id="bossbar" hidden><canvas id="bface" width="48" height="48" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="bname">EL JEFE ESTEBAN LAVANDA</div><div class="fbar boss"><i id="bhp"></i></div>
+  <div class="duo2" id="duo2" hidden><canvas id="bface2" width="48" height="48" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="bname2">ACES</div><div class="fbar boss"><i id="bhp2"></i></div></div></div></div></div>
  <div id="goArrow" hidden>GO <b>→</b></div>
  <button id="autoBtn" type="button" aria-pressed="false" aria-label="Auto fight: Richie fights by himself">
   <svg class="fist" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10h11a3 3 0 0 1 0 6h-1v3H8a2 2 0 0 1-2-2z" fill="currentColor"/><path d="M8 10V7a1.5 1.5 0 0 1 3 0v3M11 10V6.5a1.5 1.5 0 0 1 3 0V10M14 10V7a1.5 1.5 0 0 1 3 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
@@ -131,8 +133,19 @@
    <p class="rot">Tip: turn your phone sideways for the best view.</p>
   </div>
  </div>
+ <div id="intro4" class="card" hidden>
+  <div class="cardin">
+   <div class="kicker">ROSADO NIGHTS</div>
+   <h1>LEVEL 4</h1>
+   <h2>THE AIRFIELD</h2>
+   <div class="where">— TAIL THE YELLOW SUPERCAR —</div>
+   <p class="how">Stay on the supercar’s tail: keep the DISTANCE marker in the green. Too far and you lose him, too close and he spots you. ◀ ▶ to dodge traffic, BOOST to catch up, or turn on SELF DRIVE. Then beat Escobar’s two men at the airfield and take the plane!</p>
+   <button id="start4" type="button" class="big">▶ START</button>
+   <p class="rot">Tip: turn your phone sideways for the best view.</p>
+  </div>
+ </div>
  <div id="cut" hidden>
-  <video id="cutv" playsinline webkit-playsinline preload="none" poster="assets/cutscene-escobar-poster.webp?v=0.3.2" aria-label="Cutscene: Richie finds his car and heads for the airfield"></video>
+  <video id="cutv" playsinline webkit-playsinline preload="none" poster="assets/cutscene-escobar-poster.webp?v=0.4.0" aria-label="Cutscene: Richie finds his car and heads for the airfield"></video>
   <button id="cutTap" type="button" hidden>▶ TAP TO PLAY</button>
   <button id="cutSkip" type="button" aria-label="Skip cutscene">SKIP ▶▶</button>
  </div>
@@ -142,18 +155,31 @@
    <h1 class="small">LEVEL 3 COMPLETE</h1>
    <div class="where">— EL JEFE’S LINEN WALL IS DOWN —</div>
    <p class="stats" id="stats3"></p>
-   <p class="next2 teaser t3" id="teaser3"><b>NEXT: LEVEL 4 · THE AIRFIELD</b><span>COMING SOON</span></p>
-   <div class="btnrow"><button id="again3" type="button" class="big">↻ PLAY AGAIN</button>
+   <button id="next4" type="button" class="big go3">CONTINUE TO LEVEL 4 →<small>THE AIRFIELD</small></button>
+   <div class="btnrow"><button id="again3" type="button" class="mid">↻ PLAY AGAIN</button>
    <button id="toL1b" type="button" class="mid">◀ LEVEL 1</button>
+   <a class="mid btnlink" href="../">⌂ HOME</a></div>
+  </div>
+ </div>
+ <div id="done4" class="card" hidden>
+  <div class="cardin">
+   <div class="kicker">ROSADO NIGHTS</div>
+   <h1 class="small">LEVEL 4 COMPLETE</h1>
+   <div class="where">— WHEELS UP. HEADING FOR THE HILLS —</div>
+   <p class="stats" id="stats4"></p>
+   <p class="next2 teaser t4" id="teaser4"><b>NEXT: ESCOBAR’S MANSION</b><span>COMING SOON</span></p>
+   <div class="btnrow"><button id="again4" type="button" class="big">↻ PLAY AGAIN</button>
+   <button id="toL1c" type="button" class="mid">◀ LEVEL 1</button>
    <a class="mid btnlink" href="../">⌂ HOME</a></div>
   </div>
  </div>
 </div>
 <script src="../theme.js?v=2"></script>
-<script src="js/sfx.js?v=0.3.2"></script>
-<script src="js/drive.js?v=0.3.2"></script>
-<script src="js/fight.js?v=0.3.2"></script>
-<script src="js/art.js?v=0.3.2"></script>
-<script src="js/game.js?v=0.3.2"></script>
+<script src="js/sfx.js?v=0.4.0"></script>
+<script src="js/drive.js?v=0.4.0"></script>
+<script src="js/fight.js?v=0.4.0"></script>
+<script src="js/plane.js?v=0.4.0"></script>
+<script src="js/art.js?v=0.4.0"></script>
+<script src="js/game.js?v=0.4.0"></script>
 </body>
 </html>
