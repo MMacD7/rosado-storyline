@@ -290,22 +290,30 @@ function ensureCtx(){
  var sb=ctx.createBufferSource();sb.buffer=ctx.createBuffer(1,1,22050);sb.connect(ctx.destination);sb.start(0);
  window.__rosadoCtx=ctx;return true;
 }
+var fadeT=null,fading=false;
 function play(){
  if(!ensureCtx())return false;
+ clearTimeout(fadeT);fading=false;
  ctx.resume();
  if(!eng){eng=make(ctx);stepN=0;nextT=ctx.currentTime+0.08;bins=null}
+ else{var g=eng.out.gain,t=ctx.currentTime;g.cancelScheduledValues(t);g.setValueAtTime(0.8,t)}
  playing=true;schedule();startTimer();emit();return true;
 }
-function pause(){if(!ctx)return;playing=false;stopTimer();ctx.suspend();emit()}
+function pause(){if(!ctx)return;clearTimeout(fadeT);fading=false;playing=false;stopTimer();ctx.suspend();emit()}
+/* v0.6.2: fade the theme out (then pause) for Mike's videos, and back in afterwards (~0.5 s) */
+function fadeOut(sec){sec=sec==null?0.5:sec;if(!ctx||!eng||!playing)return false;clearTimeout(fadeT);fading=true;
+ var g=eng.out.gain,t=ctx.currentTime;g.cancelScheduledValues(t);g.setValueAtTime(Math.max(0.0001,g.value),t);g.linearRampToValueAtTime(0.0001,t+sec);
+ fadeT=setTimeout(function(){if(fading)pause()},sec*1000+40);emit();return true}
+function fadeIn(sec){sec=sec==null?0.5:sec;if(!play())return false;var g=eng.out.gain,t=ctx.currentTime;g.cancelScheduledValues(t);g.setValueAtTime(0.0001,t);g.linearRampToValueAtTime(0.8,t+sec);return true}
 document.addEventListener('visibilitychange',function(){if(playing)schedule()});
 /* if iOS interrupts audio (phone call etc), reflect it */
 setInterval(function(){if(ctx&&playing&&ctx.state==='interrupted'){playing=false;stopTimer();emit()}},1000);
 
 window.RosadoTheme={
  name:'Rosado Nights',bpm:SONG.bpm,supported:!!(window.AudioContext||window.webkitAudioContext),
- play:play,pause:pause,
+ play:play,pause:pause,fadeOut:fadeOut,fadeIn:fadeIn,fading:function(){return fading},gain:function(){return eng?eng.out.gain.value/0.8:0},
  toggle:function(){if(playing){pause();return false}return play()},
- isPlaying:function(){return playing},
+ isPlaying:function(){return playing&&!fading},
  started:function(){return !!eng},
  time:function(){return ctx?ctx.currentTime:0},
  onChange:function(f){subs.push(f)},
