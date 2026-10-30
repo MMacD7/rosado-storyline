@@ -1,4 +1,4 @@
-/* Rosado Nights · v0.3.1
+/* Rosado Nights · v0.3.2
    Level 3 "The Alley" (js/fight.js): side-scrolling street brawl vs El Jefe Esteban Lavanda; only reachable from the Level 2 complete card.
    Level 1 "Causeway Chase": drive Richie across the rainy neon bridge to Shred Zeppelin (js/drive.js).
    Level 2 "Reps for Jesus" (the gym):
@@ -7,7 +7,7 @@
    No network, no tracking. localStorage only keeps level-1-done + best combo / best bag time. */
 (function(){
 "use strict";
-var VERSION='0.3.1';
+var VERSION='0.3.2';
 var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight;
 var $=function(id){return document.getElementById(id)};
 var app=$('app'),cv=$('scene'),g=cv.getContext('2d'),buf=document.createElement('canvas'),bg=null,bgW=0;
@@ -15,7 +15,7 @@ var LH=ART.H;
 /* Optional art: put images in game/assets/ and list them here to replace the canvas art (slot boxes are documented in art.js).
    Leave a slot out (or let the file fail to load) and the built-in canvas art is used. Example:
    var SPRITES={'bg':'assets/gym-bg.webp?v=0.1.0','apollo-spot':'assets/apollo-spot.webp?v=0.1.0','richie-bench-down':'assets/richie-bench-down.webp?v=0.1.0'}; */
-var AV='?v=0.3.1',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
+var AV='?v=0.3.2',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
  'richie-idle':'assets/richie-idle.webp'+AV,'apollo-cross':'assets/apollo-cross.webp'+AV,
  'richie-portrait':'assets/richie-portrait.webp'+AV,'apollo-portrait':'assets/apollo-portrait.webp'+AV};
 /* multi-frame sprites (v0.2.1): bench press 0-2, Apollo spot/cheer, boxing guard/guard-low/jab/cross, walk cycle */
@@ -124,7 +124,7 @@ function begin(lv){
 }
 function setLevel(lv){var was=level;level=lv;app.dataset.level=String(lv);document.title=lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
  var a=$('scene');a.setAttribute('aria-label',lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
- if(lv!==3){SFX.fight(false);fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true}if(was!==lv)resize()}
+ if(lv!==3){if(typeof CUT==='object'&&CUT&&CUT.on){CUT.done=true;cutClose()}fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true}if(was!==lv)resize()}
 function cards(){['done','done1','done3','intro3'].forEach(function(id){$(id).hidden=true})}
 /* ---------- level 1: the drive ---------- */
 function startDrive(){
@@ -158,11 +158,12 @@ function driveHud(){var d=DRIVE.snap();dsnap=d;
 }
 /* ---------- level 3: the alley ---------- */
 function fctl(on){app.dataset.fctl=on?'1':'0';if(!on){FIGHT.move(0,0);stickReset();keys={}}}
-function themeOff(){if(T&&T.isPlaying())T.pause()}
-function showIntro3(){SFX.unlock();themeOff();$('intro').hidden=true;setLevel(3);S=fresh();S.phase='intro3';cards();hud(false);setMode('');app.classList.remove('boosting');SFX.engine(0);FIGHT.start();FIGHT.hold(false);
- $('intro3').hidden=false;if(musicOn)SFX.fight(true)}
-function startFight(){SFX.unlock();themeOff();$('intro').hidden=true;started=true;setLevel(3);S=fresh();S.phase='fight';cards();hud(true);setMode('');SFX.engine(0);FIGHT.start();dh={};
- SFX.fight(musicOn);ART.portrait($('fface'),'richie','calm');FIGHT.portrait($('bface'));$('bossbar').hidden=true;
+function showIntro3(){SFX.unlock();$('intro').hidden=true;setLevel(3);S=fresh();S.phase='intro3';cards();hud(false);setMode('');app.classList.remove('boosting');SFX.engine(0);FIGHT.start();FIGHT.hold(false);
+ $('intro3').hidden=false;themeOn()}
+/* v0.3.2: the alley plays the usual Rosado Nights theme (same song as the menu, Level 1 and Level 2), boss and ending included */
+function themeOn(){if(musicOn&&T&&T.supported)T.play()}
+function startFight(){SFX.unlock();$('intro').hidden=true;started=true;setLevel(3);S=fresh();S.phase='fight';cards();hud(true);setMode('');SFX.engine(0);FIGHT.start();dh={};
+ themeOn();ART.portrait($('fface'),'richie','calm');FIGHT.portrait($('bface'));$('bossbar').hidden=true;
  setTimeout(function(){if(level===3&&S.phase==='fight'&&FIGHT.snap().st==='ready'||level===3&&S.phase==='fight'&&FIGHT.snap().st==='intro')talk(FLINES.start,function(){FIGHT.go();fctl(true);shout('FIGHT!',1.2)})},1300)}
 function autoTalk(){if(!FIGHT.auto())return;setTimeout(function(){if(DQ&&level===3&&FIGHT.auto()&&!paused){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;SFX.blip();nextLine();autoTalk()}else if(DQ&&level===3&&FIGHT.auto())autoTalk()},1700)}
 function ftalk(lines,done){talk(lines,done);autoTalk()}
@@ -175,16 +176,36 @@ FIGHT.on('hug',function(){shout('BEAR HUG! MASH ATTACK!',1.2)});
 FIGHT.on('pickup',function(k){shout(k==='empanada'?'EMPANADAS! +HEALTH':k==='watch'?'GOLD WATCH! +1000':'GOLD CANE!',1)});
 FIGHT.on('life',function(n){shout('BACK ON YOUR FEET!',1.2)});
 FIGHT.on('lose',function(){fctl(false);ftalk(FLINES.lose,function(){FIGHT.retryWave();fctl(true);shout('TRY AGAIN!',1.2)})});
-FIGHT.on('bossDown',function(){fctl(false);SFX.fanfare();shout('K.O.!',1.6);setTimeout(function(){if(level!==3)return;ftalk(FLINES.bossDown,function(){$('bossbar').hidden=true;FIGHT.ending()})},1600)});
-FIGHT.on('carSeen',function(){ftalk(FLINES.car,function(){FIGHT.driveOff();SFX.engine(0.5);shout('NEXT STOP: ESCOBAR\u2019S MANSION',2)})});
+FIGHT.on('bossDown',function(){fctl(false);SFX.fanfare();shout('K.O.!',1.6);setTimeout(function(){if(level!==3)return;ftalk(FLINES.bossDown,function(){$('bossbar').hidden=true;playCut()})},1600)});
+FIGHT.on('carSeen',function(){ftalk(FLINES.car,function(){FIGHT.driveOff();SFX.engine(0.5);shout('NEXT: LEVEL 4 \u00B7 THE AIRFIELD',2)})});
 FIGHT.on('finish',function(st){SFX.engine(0);showDone3(st)});
+/* v0.3.2: Mike's Level 3 -> Level 4 cutscene video. It replaces the in-game car ending after El Jefe's KO;
+   that in-game ending stays only as the fallback when the video can't load or play. Game music pauses while it plays. */
+var CUT={on:false,src:'assets/cutscene-escobar.mp4'+AV,state:'off',music:false,timer:null,done:false,fallback:false,how:''};
+function playCut(){var v=$('cutv');CUT.on=true;CUT.done=false;CUT.fallback=false;CUT.how='';CUT.state='loading';S.phase='cut';FIGHT.cutscene();fctl(false);hud(false);$('bossbar').hidden=true;$('goArrow').hidden=true;
+ CUT.music=!!(T&&T.isPlaying());if(CUT.music)T.pause();
+ $('cut').hidden=false;$('cutTap').hidden=true;app.classList.add('cutting');
+ v.onended=function(){endCut('ended')};v.onerror=function(){cutFail('error')};v.onplaying=function(){CUT.state='playing';$('cutTap').hidden=true;clearTimeout(CUT.timer)};
+ v.muted=false;v.src=CUT.src;try{v.load()}catch(e){}cutPlay();
+ clearTimeout(CUT.timer);CUT.timer=setTimeout(function(){if(CUT.on&&CUT.state==='loading')cutFail('timeout')},12000)}
+function cutPlay(){var v=$('cutv'),pr=null;try{pr=v.play()}catch(e){}
+ if(pr&&pr.catch)pr.catch(function(err){if(!CUT.on||CUT.done)return;
+  if(err&&err.name==='NotAllowedError'){CUT.state='tap';$('cutTap').hidden=false;clearTimeout(CUT.timer);
+   /* AUTO FIGHT with nobody tapping: move on to the complete card */
+   if(FIGHT.auto())CUT.timer=setTimeout(function(){if(CUT.on&&CUT.state==='tap')endCut('auto')},8000)}
+  else if(!err||err.name!=='AbortError')cutFail('play')})}
+function cutClose(){clearTimeout(CUT.timer);CUT.on=false;var v=$('cutv');v.onended=v.onerror=v.onplaying=null;try{v.pause()}catch(e){}v.removeAttribute('src');try{v.load()}catch(e){}
+ $('cut').hidden=true;$('cutTap').hidden=true;app.classList.remove('cutting');if(musicOn&&T&&T.supported)T.play()}
+function endCut(how){if(!CUT.on||CUT.done)return;CUT.done=true;CUT.how=how;CUT.state='off';cutClose();showDone3(FIGHT.cutDone())}
+function cutFail(why){if(!CUT.on||CUT.done)return;CUT.done=true;CUT.fallback=true;CUT.how='fallback:'+why;CUT.state='off';cutClose();S.phase='fight';hud(true);FIGHT.ending()}
+$('cutSkip').addEventListener('click',function(e){e.preventDefault();endCut('skip')});
+$('cutTap').addEventListener('click',function(e){e.preventDefault();CUT.state='loading';$('cutTap').hidden=true;cutPlay()});
 function showDone3(st){S.phase='done3';S.shoutT=0;$('shout').classList.remove('on');hud(false);fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true;confetti(60);
  var b=store.get(),best=Math.max(b.l3best||0,st.score);store.set({l3done:true,l3best:best});
  $('stats3').innerHTML='Score: <b>'+st.score+'</b> \u00B7 Bodyguards down: <b>'+st.kos+'</b><br>Time: <b>'+st.time.toFixed(1)+'s</b> \u00B7 Lives left: <b>'+st.lives+'</b>'+(st.stats.retries?' \u00B7 retries: '+st.stats.retries:'')+'<br><small>Your best: '+best+'</small>';
  $('done3').hidden=false;var c=$('done3').querySelector('.cardin');if(c){c.classList.remove('burst');void c.offsetWidth;c.classList.add('burst')}}
 function fightHud(){var f=FIGHT.snap();if(!f)return;
  var rg=f.rage/f.rageMax;setW('fragei',rg);var full=rg>=1;if(dh.rfull!==full){dh.rfull=full;$('frage').classList.toggle('full',full);$('fSpec').classList.toggle('ready',full)}
- if(SFX.fightMode)SFX.fightMode(f.boss?'boss':'street');
  setW('fhpi',Math.max(0,f.player.hp)/100);var low=f.player.hp<=30;if(dh.low!==low){dh.low=low;$('fhp').classList.toggle('low',low)}
  setTxt('lives','\u00D7'+f.lives);setTxt('score',('000000'+f.score).slice(-6));
  var wt=f.boss?(f.boss.hp>0?'BOSS':''):f.wave>0?'WAVE '+Math.min(f.wave,f.waves)+'/'+f.waves:'';setTxt('wtag',wt);
@@ -347,7 +368,7 @@ function loop(ts){
 function setPaused(p){
  if(p===paused)return;paused=p;$('pause').hidden=!p;
  if(p){if(T&&T.isPlaying())T.pause();SFX.setPaused(true);if(level!==3)SFX.engine(0)}
- else{SFX.setPaused(false);if(level===3){SFX.fight(musicOn&&S.phase!=='done3')}else if(musicOn&&T&&T.supported)T.play();S.lastTap=clock}
+ else{SFX.setPaused(false);if(musicOn&&T&&T.supported)T.play();S.lastTap=clock}
 }
 function musicUI(){var m=$('music');m.textContent=musicOn?'\u266B MUSIC: ON':'\u266B MUSIC: OFF';m.setAttribute('aria-pressed',musicOn?'true':'false')}
 
@@ -357,7 +378,7 @@ $('startL2').addEventListener('click',function(){begin(2)});
 $('next2').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('again1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 $('toL1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
-function canPause(){return started&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'}
+function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'}
 function dsteer(dir){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();if(DRIVE.self()){setSelf(false);shout('SELF DRIVE OFF',0.9)}if(DRIVE.steer(dir))SFX.blip()}
 function setSelf(on){DRIVE.setSelf(on);var b=$('selfBtn');b.setAttribute('aria-pressed',on?'true':'false');$('selfState').textContent=on?'ON':'OFF';app.classList.toggle('selfdrive',!!on);$('selfInd').hidden=!on}
 function toggleSelf(){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();SFX.blip();var on=!DRIVE.self();setSelf(on);shout(on?'SELF DRIVE ON':'SELF DRIVE OFF',0.9)}
@@ -382,7 +403,7 @@ $('again').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.sup
 $('next3').addEventListener('click',function(){started=true;showIntro3()});
 $('start3').addEventListener('click',function(){startFight()});
 $('again3').addEventListener('click',function(){startFight()});
-$('toL1b').addEventListener('click',function(){SFX.unlock();SFX.fight(false);if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
+$('toL1b').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 [['fAtk','atk'],['fKick','kick'],['fJump','jump'],['fSpec','special']].forEach(function(b){var el=$(b[0]);
  el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('hit');setTimeout(function(){el.classList.remove('hit')},90);fpress(b[1])});
  el.addEventListener('click',function(e){e.preventDefault()});el.addEventListener('contextmenu',function(e){e.preventDefault()})});
@@ -405,7 +426,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){e.preventDefault();dsteer(1);return}
   if(e.key===' '||e.key==='ArrowUp'||e.key==='w'||e.key==='Enter'){e.preventDefault();dboost();return}}
  if(e.key===' '||e.key==='Enter'){if(app.dataset.ctl==='1'&&!paused){e.preventDefault();action()}else if(DQ&&!paused){e.preventDefault();tapDialog()}}
- else if(e.key==='Escape'||e.key==='p'){if(canPause())setPaused(!paused)}
+ else if(e.key==='Escape'||e.key==='p'){if(CUT.on)endCut('skip');else if(canPause())setPaused(!paused)}
 });
 document.addEventListener('visibilitychange',function(){if(document.hidden&&canPause())setPaused(true)});
 document.addEventListener('gesturestart',function(e){e.preventDefault()});
@@ -423,7 +444,8 @@ requestAnimationFrame(function(ts){last=ts;loop(ts)});
 window.__rosado={version:VERSION,REPS:REPS,BAG:BAG,IDLE:IDLE,IDLE_MULT:IDLE_MULT,
  snap:function(){var L=bagLevel();return {level:level,drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
   timeLeft:S.timeLeft,marker:markerPos(S.m),dir:(S.m%2)<1?1:-1,zone:[BAG.center[L]-BAG.zone[L],BAG.center[L]+BAG.zone[L]],speed:BAG.speed[L],cd:S.cd,paused:paused,dialog:!!DQ,line:DQ?DQ.full:'',
-  musicOn:musicOn,music:level===3?!!SFX.fightOn():!!(T&&T.isPlaying()),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
- loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,
+  musicOn:musicOn,music:!!(T&&T.isPlaying()),cut:(function(){var v=$('cutv');return {on:CUT.on,state:CUT.state,how:CUT.how,fallback:CUT.fallback,visible:!$('cut').hidden,t:v.currentTime,paused:v.paused,src:v.getAttribute('src')||'',tap:!$('cutTap').hidden}})(),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
+ loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightBox:function(i){var f=FIGHT.snap();if(!f)return null;var e=i<0?f.player:f.enemies[i];if(!e)return null;var m=FIGHT.META[e.frame],hw=m?Math.max(m[2],m[0]-m[2])/2:e.h*0.3,r=$('view').getBoundingClientRect(),X=function(x){return r.left+ox+(x-f.cam)*scale},Y=function(y){return r.top+oy+y*scale};
+  return {l:X(e.x-hw),r:X(e.x+hw),t:Y(e.y-(e.z||0)-e.h),b:Y(e.y-(e.z||0)),feet:Y(e.y),scale:scale,h:e.h}},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,
  dev:DRIVE.dev,CFG:DRIVE.CFG};
 })();

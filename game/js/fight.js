@@ -1,4 +1,4 @@
-/* Rosado Nights · Level 3 "The Alley" (v0.3.1: KICK button + kick combos, RICHIE RAGE special with a rage meter)
+/* Rosado Nights · Level 3 "The Alley" (v0.3.1: KICK button + kick combos, RICHIE RAGE special with a rage meter; v0.3.2: El Jefe is a 7 ft giant, boss KO hands off to the cutscene video)
    Side-scrolling 2.5D beat-'em-up: Richie vs El Jefe Esteban Lavanda's linen-suited bodyguards.
    Cartoon fighting only: hit flashes, knock-downs, blink-and-vanish. Canvas fallback art when images fail.
    API: RosadoFight.start(), update(dt), render(ctx,W,t) (ctx is a 2x buffer), move(x,y), press('atk'|'kick'|'jump'|'special'),
@@ -6,7 +6,7 @@
 (function(){
 "use strict";
 var H=225,LEN=1600,YMIN=152,YMAX=214,GRAV=640;
-var META={"l3-r-guard":[99,172,49.0],"l3-r-jab":[125,170,49.5],"l3-r-hook":[128,169,53.5],"l3-r-kick":[125,117,56.0],"l3-r-hurt":[98,165,46.0],"l3-r-jump":[70,115,32.0],"l3-r-grab":[124,147,47.5],"l3-r-throw":[97,153,48.0],"l3-r-spin":[97,141,45.0],"l3-r-down":[139,69,69.5],"l3-r-chamber":[77,172,29.5],"l3-r-fkick":[126,167,40.5],"l3-r-round":[121,165,43.0],"l3-r-heel":[106,167,35.0],"l3-r-jkick":[113,116,53.0],"l3-r-walk-0":[81,168,40.0],"l3-r-walk-1":[78,168,38.5],"l3-r-walk-2":[83,169,41.0],"l3-r-walk-3":[64,169,27.0],"l3-bruno-idle":[87,180,43.0],"l3-bruno-walk":[109,177,54.0],"l3-bruno-hug":[147,167,74.5],"l3-bruno-hurt":[98,178,50.5],"l3-bruno-down":[140,52,70.0],"l3-tito-idle":[102,182,50.5],"l3-tito-walk":[109,181,54.0],"l3-tito-hurt":[97,168,48.0],"l3-tito-down":[163,78,81.5],"l3-tito-up":[134,251,66.5],"l3-tito-slam":[162,181,103.5],"l3-rafa-idle":[99,176,49.0],"l3-rafa-walk":[102,176,50.5],"l3-rafa-block":[98,174,48.5],"l3-rafa-punch":[133,173,79.5],"l3-rafa-hurt":[98,172,43.5],"l3-rafa-down":[172,98,86.0],"l3-jefe-idle":[56,132,28.0],"l3-jefe-walk":[68,131,33.5],"l3-jefe-hook":[88,103,33.5],"l3-jefe-twirl":[88,122,27.5],"l3-jefe-whistle":[58,131,26.5],"l3-jefe-down":[92,109,46.0],"l3-empanada":[56,40,28.0],"l3-cane":[35,80,17.5],"l3-watch":[27,44,13.5],"l3-bin":[53,76,26.5],"l3-crate":[60,64,30.0],"l3-planks":[47,44,23.5],"l3-car":[440,135,220.0],"l3-car-dmg":[440,135,220.0]};
+var META={"l3-r-guard":[99,172,49.0],"l3-r-jab":[125,170,49.5],"l3-r-hook":[128,169,53.5],"l3-r-kick":[125,117,56.0],"l3-r-hurt":[98,165,46.0],"l3-r-jump":[70,115,32.0],"l3-r-grab":[124,147,47.5],"l3-r-throw":[97,153,48.0],"l3-r-spin":[97,141,45.0],"l3-r-down":[139,69,69.5],"l3-r-chamber":[77,172,29.5],"l3-r-fkick":[126,167,40.5],"l3-r-round":[121,165,43.0],"l3-r-heel":[106,167,35.0],"l3-r-jkick":[113,116,53.0],"l3-r-walk-0":[81,168,40.0],"l3-r-walk-1":[78,168,38.5],"l3-r-walk-2":[83,169,41.0],"l3-r-walk-3":[64,169,27.0],"l3-bruno-idle":[87,180,43.0],"l3-bruno-walk":[109,177,54.0],"l3-bruno-hug":[147,167,74.5],"l3-bruno-hurt":[98,178,50.5],"l3-bruno-down":[140,52,70.0],"l3-tito-idle":[102,182,50.5],"l3-tito-walk":[109,181,54.0],"l3-tito-hurt":[97,168,48.0],"l3-tito-down":[163,78,81.5],"l3-tito-up":[134,251,66.5],"l3-tito-slam":[162,181,103.5],"l3-rafa-idle":[99,176,49.0],"l3-rafa-walk":[102,176,50.5],"l3-rafa-block":[98,174,48.5],"l3-rafa-punch":[133,173,79.5],"l3-rafa-hurt":[98,172,43.5],"l3-rafa-down":[172,98,86.0],"l3-jefe-idle":[101,238,50.5],"l3-jefe-walk":[123,236,61.0],"l3-jefe-hook":[158,185,61.0],"l3-jefe-twirl":[158,221,50.5],"l3-jefe-whistle":[104,237,47.5],"l3-jefe-down":[166,196,83.0],"l3-empanada":[56,40,28.0],"l3-cane":[35,80,17.5],"l3-watch":[27,44,13.5],"l3-bin":[53,76,26.5],"l3-crate":[60,64,30.0],"l3-planks":[47,44,23.5],"l3-car":[440,135,220.0],"l3-car-dmg":[440,135,220.0]};
 var SLOTS=Object.keys(META).concat(['l3-bg-a','l3-bg-b','l3-jefe-portrait']);
 var CORE=['l3-bg-a','l3-bg-b','l3-r-guard','l3-r-jab','l3-bruno-idle','l3-tito-idle','l3-rafa-idle','l3-jefe-idle','l3-car'];
 var SPR={},WHITE={};
@@ -22,7 +22,8 @@ var TYPES={
  rafa:{hp:42,spd:52,name:'RAFA',reach:30,cd:[1.0,1.8],block:0.45},
  bruno:{hp:58,spd:38,name:'BRUNO',reach:24,cd:[1.4,2.4]},
  tito:{hp:62,spd:30,name:'TITO',reach:32,cd:[1.6,2.6]},
- jefe:{hp:150,spd:46,name:'EL JEFE ESTEBAN LAVANDA',reach:36,cd:[1.4,2.2]}};
+ jefe:{hp:150,spd:44,name:'EL JEFE ESTEBAN LAVANDA',reach:52,cd:[1.4,2.2],big:1}};
+var JEFE_YMIN=YMIN+14; /* 7 ft: keep his head below the HUD / pause button */
 var ATK={jab:{d:7,r:34,t:0.24,hit:0.07,kb:8},jab2:{d:7,r:34,t:0.24,hit:0.07,kb:8},hook:{d:13,r:38,t:0.36,hit:0.12,kb:0,down:1},
  kick:{d:13,r:42,t:0.5,hit:0.02,kb:0,down:1},
  fkick:{d:9,r:46,t:0.34,hit:0.12,kb:72,k:1},round:{d:11,r:46,t:0.4,hit:0.15,kb:20,k:1},heel:{d:15,r:48,t:0.5,hit:0.24,down:1,k:1},round2:{d:14,r:46,t:0.42,hit:0.15,down:1,k:1},
@@ -123,7 +124,7 @@ function doThrow(p,g){startAtk(p,'throw');p.grabKeep=null;p.grab=null;F.stats.th
  g.st='air';g.t=0;g.thrown=true;g.face=-p.face;g.vx=p.face*170;g.vz=150;g.z=8;g.x=p.x+p.face*10;damage(g,ATK.throw.d,p,true);sfx('whiff');pop(p.x,p.y-95,'THROW!','#ff8af0')}
 function playerHit(p,A){var any=false;
  F.enemies.forEach(function(e){if(!alive(e)||e.st==='down'||e.st==='air'||e.st==='getup'||e.st==='dead')return;if(e.inv>0)return;
-  var dx=(e.x-p.x)*p.face;if(A.both)dx=Math.abs(e.x-p.x);if(dx<-6||dx>A.r||Math.abs(e.y-p.y)>12)return;if(p.atk==='knee'&&e!==p.grabKeep)return;
+  var dx=(e.x-p.x)*p.face,bigE=e.type==='jefe'?8:0;if(A.both)dx=Math.abs(e.x-p.x);if(dx<-6||dx>A.r+bigE||Math.abs(e.y-p.y)>12+bigE/2)return;if(p.atk==='knee'&&e!==p.grabKeep)return;
   if(p.atk==='kick'&&p.hitList&&p.hitList.indexOf(e)>=0)return;
   /* Rafa blocks jabs from the front */
   if(e.type==='rafa'&&(e.st==='idle'||e.st==='walk'||e.st==='block')&&(p.atk==='jab'||p.atk==='jab2')&&e.face===-p.face&&(e.st==='block'||Math.random()<TYPES.rafa.block)){
@@ -137,7 +138,7 @@ function playerHit(p,A){var any=false;
 function damage(e,d,src,down){
  if(e.type==='jefe'&&down&&e.hp-d>0&&Math.random()<0.5)down=false;
  e.hp=Math.max(0,e.hp-d);e.flash=0.14;e.hits++;F.stats.hits++;addScore(100);F.ehud={e:e,t:2.2};
- var big=down||d>=13;spark(e.x+(src.x<e.x?-6:6),e.y-(e.type==='jefe'?50:66),big);sfx('punch',big?1.3:1);
+ var big=down||d>=13;spark(e.x+(src.x<e.x?-8:8),e.y-(e.type==='jefe'?84:66),big);sfx('punch',big?1.3:1);
  if(e.hp<=0)down=true;
  if(e.st==='hug'&&F.player.st==='held'){F.player.st='idle';F.player.inv=0.8}
  if(down){e.st='air';e.t=0;e.vx=(e.x>=src.x?1:-1)*(e.thrown?170:110);e.vz=e.thrown?e.vz:130;e.z=Math.max(e.z,2);e.hits=0;e.face=e.x>=src.x?-1:1}
@@ -186,10 +187,10 @@ function enemyUpdate(e,dt){var p=F.player,T=TYPES[e.type];e.t+=dt;e.flash=Math.m
  var mx=tx-e.x,my=ty-e.y,sp=T.spd*(want?1:0.7);
  if(!want&&adx<70&&Math.abs(dy)<26){mx=0;my=Math.abs(dy)>14?my:0}
  if(Math.abs(mx)>3||Math.abs(my)>2){e.x+=Math.sign(mx)*Math.min(Math.abs(mx),sp*dt);e.y+=Math.sign(my)*Math.min(Math.abs(my),sp*0.7*dt);e.st='walk'}else e.st='idle';
- clampLane(e);e.x=Math.max(F.cam-30,Math.min(F.cam+W+30,e.x));
+ clampLane(e);if(e.type==='jefe')e.y=Math.max(JEFE_YMIN,e.y);e.x=Math.max(F.cam-30,Math.min(F.cam+W+30,e.x));
  if(want&&adx<T.reach+4&&Math.abs(dy)<8){e.st='wind';e.t=0;e.atk=e.type==='jefe'?(Math.random()<0.55?'hook':'twirl'):e.type==='rafa'?'punch':e.type==='bruno'?'hug':'slam';e.hitDone=false;e.face=dx>0?1:-1;if(e.type==='tito')sfx('strain',0.6)}
 }
-var EATK={punch:{w:0.28,a:0.22,d:8,r:34},counter:{w:0.12,a:0.22,d:9,r:36},hug:{w:0.45,a:0.3,d:0,r:30},slam:{w:0.62,a:0.38,d:14,r:38,down:1},hook:{w:0.38,a:0.3,d:8,r:40,trip:1},twirl:{w:0.3,a:0.7,d:10,r:38,down:1}};
+var EATK={punch:{w:0.28,a:0.22,d:8,r:34},counter:{w:0.12,a:0.22,d:9,r:36},hug:{w:0.45,a:0.3,d:0,r:30},slam:{w:0.62,a:0.38,d:14,r:38,down:1},hook:{w:0.38,a:0.3,d:9,r:56,trip:1},twirl:{w:0.3,a:0.7,d:11,r:54,down:1}};
 function attackUpdate(e,dt,dx,dy){var A=EATK[e.atk],p=F.player,T=TYPES[e.type];
  if(e.st==='wind'){if(e.atk==='hug')e.x+=e.face*30*dt;if(e.t>=A.w){e.st='atk';e.t=0;sfx(e.atk==='twirl'?'spin':'whiff')}return}
  if(!e.hitDone&&e.t>=0.05){var hdx=(p.x-e.x)*e.face;
@@ -197,7 +198,7 @@ function attackUpdate(e,dt,dx,dy){var A=EATK[e.atk],p=F.player,T=TYPES[e.type];
    if(e.atk==='hug'){p.st='held';p.t=0;p.mash=0;e.st='hug';e.t=0;e.sq=0;F.stats.hugs++;pop(p.x,p.y-95,'MASH TO ESCAPE!','#ffd23a');emit('hug');sfx('thump',0.6);return}
    hurtPlayer(p,A.d,e,A.down||A.trip);if(A.trip){F.stats.trips++;pop(p.x,p.y-90,'TRIPPED!','#d9b3ff');e.atk='twirl';e.st='atk';e.t=0;e.hitDone=true;e.twirlFollow=true;sfx('spin')}}
   if(e.atk==='twirl'&&e.t>0.35)e.hitDone=e.hitDone||false}
- if(e.atk==='twirl'&&e.twirlFollow&&e.t>0.4&&!e.follow2){e.follow2=true;if(p.st==='down'&&Math.abs(p.x-e.x)<44){p.hp=Math.max(1,p.hp-6);p.flash=0.12;spark(p.x,p.y-20,false);sfx('punch',0.8)}}
+ if(e.atk==='twirl'&&e.twirlFollow&&e.t>0.4&&!e.follow2){e.follow2=true;if(p.st==='down'&&Math.abs(p.x-e.x)<58){p.hp=Math.max(1,p.hp-6);p.flash=0.12;spark(p.x,p.y-20,false);sfx('punch',0.8)}}
  if(e.t>=A.a){e.st='idle';e.t=0;e.twirlFollow=false;e.follow2=false;e.cd=rnd(T.cd[0],T.cd[1])}
 }
 function hurtPlayer(p,d,src,down){if(p.inv>0)return;p.hp=Math.max(0,p.hp-d);p.flash=0.16;spark(p.x+(src.x<p.x?-6:6),p.y-66,down);sfx('punch',down?1.2:0.9);p.combo=0;p.grab=null;
@@ -222,6 +223,8 @@ function bossStart(retry){F.lock=LEN-W;F.cam=LEN-W;var b=ent('jefe',F.cam+W+20,1
  if(!retry){hold(true);setTimeout(function(){if(F&&F.boss===b)emit('boss')},900);b.introWalk=true}}
 function bossDefeated(b){F.story.push('bossDown');F.enemies.forEach(function(e){if(e!==b&&alive(e)){e.hp=0;damage(e,0,F.player,true)}});
  F.car.dmg=true;F.st='bossdown';F.bdT=0;F.player.st='idle';emit('bossDown')}
+function cutscene(){F.st='cut';F.story.push('cutscene');F.player.st='idle'}
+function cutDone(){F.story.push('cutDone');F.st='done';return summary()}
 function ending(){F.st='ending';F.story.push('walk');var p=F.player;p.st='auto';p.t=0;F.endT=0}
 function driveOff(){F.st='drive';F.story.push('drive');F.player.st='incar';F.car.richieIn=true;F.car.vx=0;F.driveT=0;sfx('clunk');emit('drive')}
 
@@ -308,7 +311,7 @@ function frameOf(e){var t=e.type,s=e.st;
  return pre+'idle'}
 /* canvas fallback figure */
 var COL={richie:{skin:'#c98a5a',top:'#f4f4f4',leg:'#1c1c24',hair:'#a8a8b0',h:86},bruno:{skin:'#b8784a',top:'#e8dcc0',leg:'#e0d2b4',hair:'#1a1410',h:90,wide:1.25},tito:{skin:'#b07448',top:'#e8dcc0',leg:'#e0d2b4',hair:'#2a2420',h:91},
- rafa:{skin:'#b87a4c',top:'#e8dcc0',leg:'#e0d2b4',hair:'#141010',h:88},jefe:{skin:'#c99070',top:'#b593d9',leg:'#a983cf',hair:'#d8d8de',h:66}};
+ rafa:{skin:'#b87a4c',top:'#e8dcc0',leg:'#e0d2b4',hair:'#141010',h:88},jefe:{skin:'#c99070',top:'#b593d9',leg:'#a983cf',hair:'#d8d8de',h:119}};
 function drawFig(g,e,x,y,flip,flash,alpha){var c=COL[e.type],s=e.st,h=c.h,w=(c.wide||1)*h*0.26;g.save();g.translate(Math.round(x),Math.round(y));if(flip)g.scale(-1,1);if(alpha!=null)g.globalAlpha=alpha;
  var base=e.type==='richie'?1:-1;g.scale(base,1);var fl=flash>0,F2=function(col){return fl?'#fff':col};
  if(s==='down'||s==='dead'||(s==='air'&&e.vz<=40)){g.fillStyle=F2(c.leg);g.fillRect(-h*0.5,-w*0.5,h*0.45,w*0.5);g.fillStyle=F2(c.top);g.fillRect(-h*0.05,-w*0.6,h*0.38,w*0.6);g.fillStyle=F2(c.skin);g.fillRect(h*0.33,-w*0.55,w*0.5,w*0.5);g.restore();return}
@@ -328,7 +331,7 @@ function drawEnt(g,e,cx){var x=e.x-cx,y=e.y-e.z,flip;
  if(x<-120||x>W+120)return;
  if(e.st==='incar')return;
  /* shadow */
- g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(e.x-cx,e.y,e.type==='jefe'?12:18,4,0,0,Math.PI*2);g.fill();
+ g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(e.x-cx,e.y,e.type==='jefe'?24:18,e.type==='jefe'?5:4,0,0,Math.PI*2);g.fill();
  var alpha=e.st==='dead'&&e.t>0.6?(Math.floor(e.t*14)%2?0.15:1):(e.inv>0&&e===F.player&&Math.floor(F.time*16)%2?0.45:null);
  var k=frameOf(e),base=e.type==='richie'?1:-1;flip=e.face!==base;
  if(e.type==='richie'&&e.st==='atk'&&(e.atk==='spin'||e.atk==='rage'&&e.t>=0.14))flip=Math.floor(e.t*16)%2?!flip:flip;
@@ -381,10 +384,11 @@ function portrait(cv){var g=cv.getContext('2d');g.setTransform(1,0,0,1,0,0);g.cl
  var gr=g.createLinearGradient(0,0,0,cv.height);gr.addColorStop(0,'#3a1a58');gr.addColorStop(1,'#0a0618');g.fillStyle=gr;g.fillRect(0,0,cv.width,cv.height);
  if(im){g.imageSmoothingEnabled=true;g.drawImage(im,0,0,cv.width,cv.height);return}
  var k=cv.width/24;g.setTransform(k,0,0,k,0,0);g.fillStyle='#b593d9';g.fillRect(3,18,18,6);g.fillStyle='#111';g.fillRect(10,18,4,6);g.fillStyle='#c99070';g.fillRect(7,6,10,12);g.fillStyle='#d8d8de';g.fillRect(7,4,10,4);g.fillStyle='#222';g.fillRect(9,14,6,1);g.fillRect(9,10,2,1);g.fillRect(13,10,2,1)}
+function figH(e){var k=frameOf(e),m=SPR[k]&&META[k];return m?m[1]/2:COL[e.type].h}
 function snap(){if(!F)return null;var p=F.player,b=F.boss;
  return {st:F.st,time:F.time,cam:F.cam,lock:F.lock,wave:F.wave+1,waves:WAVES.length,go:F.go,score:F.score,lives:F.lives,auto:AUTO,rage:F.rage,rageMax:RAGE_MAX,fxNow:{slow:F.slowT>0,shake:F.shakeT>0,flash:F.flashT>0,rings:F.fx.filter(function(f){return f.k==='ring'}).length},story:F.story.slice(),
-  player:{x:p.x,y:p.y,z:p.z,hp:p.hp,st:p.st,face:p.face,weapon:p.weapon,atk:p.atk,inv:p.inv,t:p.t,frame:frameOf(p)},
-  enemies:F.enemies.map(function(e){return {type:e.type,hp:e.hp,max:e.max,st:e.st,x:e.x,y:e.y,flash:e.flash,vx:e.vx}}),
+  player:{x:p.x,y:p.y,z:p.z,hp:p.hp,st:p.st,face:p.face,weapon:p.weapon,atk:p.atk,inv:p.inv,t:p.t,frame:frameOf(p),h:figH(p)},
+  enemies:F.enemies.map(function(e){return {type:e.type,hp:e.hp,max:e.max,st:e.st,x:e.x,y:e.y,z:e.z,flash:e.flash,vx:e.vx,h:figH(e),frame:frameOf(e)}}),
   boss:b?{hp:b.hp,max:b.max,st:b.st,half:F.bossHalf}:null,items:F.items.filter(function(i){return !i.taken}).map(function(i){return {k:i.k,x:i.x,y:i.y}}),
   breaks:F.breaks.filter(function(b){return b.st==='ok'}).length,car:{dmg:F.car.dmg,x:F.car.x,gone:F.car.gone,richieIn:F.car.richieIn},ehud:F.ehud?{name:TYPES[F.ehud.e.type].name,hp:F.ehud.e.hp,max:F.ehud.e.max}:null,
   stats:JSON.parse(JSON.stringify(F.stats)),LEN:LEN,W:W,sprites:spriteMode()}}
@@ -395,6 +399,6 @@ var dev={rage:function(n){F.rage=n},speed:function(k){SPEED=Math.max(1,k|0)},hp:
  item:function(k,dx){F.items.push({k:k,x:F.player.x+(dx||0),y:F.player.y,t:0})},
  bossHp:function(n){if(F.boss)F.boss.hp=n},clearWave:function(){F.waveQ=[];F.enemies.forEach(function(e){if(e.type!=='jefe')e.st='gone'})},
  freeze:function(i,on){if(F.enemies[i])F.enemies[i].cd=on?99:0.5},place:function(x,y){F.player.x=x;if(y)F.player.y=y}};
-window.RosadoFight={start:start,update:update,render:render,move:move,press:press,hold:hold,go:go,ending:ending,driveOff:driveOff,retryWave:retryWave,setAuto:setAuto,auto:function(){return AUTO},
+window.RosadoFight={start:start,update:update,render:render,move:move,press:press,hold:hold,go:go,ending:ending,driveOff:driveOff,cutscene:cutscene,cutDone:cutDone,summary:function(){return F?summary():null},META:META,retryWave:retryWave,setAuto:setAuto,auto:function(){return AUTO},
  on:on,snap:snap,portrait:portrait,loadSprites:loadSprites,spriteMode:spriteMode,sprites:SPR,SLOTS:SLOTS,dev:dev,state:function(){return F},LEN:LEN,TYPES:TYPES,WAVES:WAVES};
 })();
