@@ -1,4 +1,4 @@
-/* Rosado Nights · Level 6 "Escobar" (v0.6.0) · the FINAL level
+/* Rosado Nights · Level 6 "Escobar" (v0.6.1) · the FINAL level
    Stages: 'stairs'  brawl up the grand staircase (guard waves, the chief barking orders from the landing, KICK the railings to drop the chandeliers,
                      pickups: pool cue, fire extinguisher, chandelier arm). At the top Escobar fires his gold shotgun, misses, the aquarium shatters
                      and the fight goes on knee-deep with cartoon sharks that bump and tumble guards (they never bite).
@@ -7,7 +7,8 @@
                      the last hit launches Escobar off the roof into the pool. The chief gets away in the helicopter.
            'bay'     jet-ski chase of Escobar's speedboat across the neon bay: yacht wakes are jumps, fireworks overhead, ramp off the yacht onto his deck
            'deck'    final deck brawl: Escobar is knocked out
-           'finale'  the chief's seaplane: Richie grabs the tail, gets shaken off, drops into the bay -> sunrise, the chief's gold badge -> emit('end')
+           'finale'  the chief's black unmarked helicopter hovers over the boat (rotor wash, spotlight), the chief in the open side door with her drink.
+                     The shot holds -> emit('end') (the game then plays the optional ending video, then the ending card)
    Cartoon only: knocked-out guards lie down with stars and a snore. Nothing graphic. Canvas fallback art when images fail.
    Juice: slow-mo on finishers with a white flash, hit-stop freeze frames, screen shake, comic impact bursts, 3-4 layer parallax, real lighting.
    API (window.RosadoEscobar): start(stage,keep), go(), resume(), update(dt), render(g,W,t) (2x buffer), move(x,y), press(k), setAuto(b), auto(), on(evt,fn),
@@ -15,8 +16,8 @@
 (function(){
 "use strict";
 var H=225;
-var META={"l6-r-guard":[108,200,53.5],"l6-r-walk-0":[108,199,53.5],"l6-r-walk-1":[101,198,50.0],"l6-r-jab":[128,198,51.0],"l6-r-cross":[133,197,51.0],"l6-r-upper":[106,235,52.5],"l6-r-hkick":[136,185,51.0],"l6-r-fkick":[143,133,71.5],"l6-r-heel":[116,165,54.0],"l6-r-hurt":[100,173,50.5],"l6-r-down":[155,50,77.5],"l6-r-club":[134,245,69.0],"l6-r-spray":[159,190,69.0],"l6-r-cue":[156,188,63.0],"l6-r-ski":[177,144,88.5],"l6-r-skijump":[160,162,80.0],"l6-r-climb-0":[97,230,48.5],"l6-r-climb-1":[87,236,43.5],"l6-r-hang":[64,228,32.0],"l6-esc-idle":[90,212,44.5],"l6-esc-walk":[96,208,47.5],"l6-esc-punch":[133,208,80.0],"l6-esc-fire":[157,206,105.0],"l6-esc-hurt":[127,176,43.0],"l6-esc-down":[163,66,81.5],"l6-tank-idle":[129,236,64.0],"l6-tank-walk":[129,233,64.0],"l6-tank-wind":[134,238,66.5],"l6-tank-punch":[182,225,112.0],"l6-tank-hurt":[131,205,72.0],"l6-tank-down":[180,77,90.0],"l6-chief-point":[107,190,49.5],"l6-chief-cross":[101,191,51.0],"l6-chief-wave":[108,188,58.0],"l6-badge":[33,44,16.5],"l6-chandelier":[132,150,66.0],"l6-shark-0":[111,74,55.5],"l6-shark-1":[77,84,38.5],"l6-ext":[27,52,13.5],"l6-arm":[53,56,26.5],"l6-cue":[231,12,115.5],"l6-tile":[38,34,19.0],"l6-rail1":[94,60,47.0],"l6-heli":[300,117,150.0],"l6-seaplane":[250,95,125.0],"l6-boat":[300,63,150.0],"l6-yacht":[460,207,230.0],"l6-rail":[812,96,406.0],"l5-guard-walk-0":[129,180,48.5],"l5-guard-walk-1":[133,179,52.0],"l5-guard-run":[126,194,49.0],"l5-guard-punch":[156,167,53.5],"l5-guard-down":[173,59,86.5]};
-var BGS=['l6-tank-portrait','l6-hall-far','l6-roof','l6-bay-far','l6-sunrise','l6-wall','l6-chief-portrait','l6-esc-portrait','l5-guard-portrait'];
+var META={"l6-r-guard":[108,200,53.5],"l6-r-walk-0":[108,199,53.5],"l6-r-walk-1":[101,198,50.0],"l6-r-jab":[128,198,51.0],"l6-r-cross":[133,197,51.0],"l6-r-upper":[106,235,52.5],"l6-r-hkick":[136,185,51.0],"l6-r-fkick":[143,133,71.5],"l6-r-heel":[116,165,54.0],"l6-r-hurt":[100,173,50.5],"l6-r-down":[155,50,77.5],"l6-r-club":[134,245,69.0],"l6-r-spray":[159,190,69.0],"l6-r-cue":[156,188,63.0],"l6-r-ski":[177,144,88.5],"l6-r-skijump":[160,162,80.0],"l6-r-climb-0":[97,230,48.5],"l6-r-climb-1":[87,236,43.5],"l6-r-hang":[64,228,32.0],"l6-esc-idle":[90,212,44.5],"l6-esc-walk":[96,208,47.5],"l6-esc-punch":[133,208,80.0],"l6-esc-fire":[157,206,105.0],"l6-esc-hurt":[127,176,43.0],"l6-esc-down":[163,66,81.5],"l6-tank-idle":[129,236,64.0],"l6-tank-walk":[129,233,64.0],"l6-tank-wind":[134,238,66.5],"l6-tank-punch":[182,225,112.0],"l6-tank-hurt":[131,205,72.0],"l6-tank-down":[180,77,90.0],"l6-chief-point":[107,190,49.5],"l6-chief-cross":[101,191,51.0],"l6-chief-wave":[108,188,58.0],"l6-chandelier":[132,150,66.0],"l6-shark-0":[111,74,55.5],"l6-shark-1":[77,84,38.5],"l6-ext":[27,52,13.5],"l6-arm":[53,56,26.5],"l6-cue":[231,12,115.5],"l6-tile":[38,34,19.0],"l6-rail1":[94,60,47.0],"l6-heli":[300,117,150.0],"l6-boat":[300,63,150.0],"l6-yacht":[460,207,230.0],"l6-rail":[812,96,406.0],"l5-guard-walk-0":[129,180,48.5],"l5-guard-walk-1":[133,179,52.0],"l5-guard-run":[126,194,49.0],"l5-guard-punch":[156,167,53.5],"l5-guard-down":[173,59,86.5]};
+var BGS=['l6-tank-portrait','l6-hall-far','l6-roof','l6-bay-far','l6-wall','l6-chief-portrait','l6-esc-portrait','l5-guard-portrait'];
 var SLOTS=Object.keys(META).concat(BGS);
 var CORE=['l6-r-guard','l6-esc-idle','l6-hall-far','l5-guard-walk-0','l6-r-ski','l6-roof'];
 var STAGES=['stairs','climb','roof','bay','deck','finale'];
@@ -79,7 +80,7 @@ function initRoof(){M.p=player(70,198);M.foes=[escobar(250,196,CFG.esc.hp.roof)]
 function initBay(){var B=CFG.bay;M.b={d:0,y:184,z:0,vz:0,gap:B.gap0,meter:0.6,boost:0,jumpCd:0,air:0,flip:0,wipe:0,hurtT:0,spray:[],works:[],workT:0.5,obs:B.obs.map(function(o){return {x:o[0],y:o[1],hit:false}}),wakes:B.wakes.map(function(x){return {x:x,used:false}}),
  final:false,finT:0,ramp:B.len+260,trick:false}}
 function initDeck(){M.p=player(60,198);M.foes=[];for(var i=0;i<CFG.deck.guards;i++)M.foes.push(guard(W+30+i*40,182+i*22,{face:-1}));M.boss=null;M.d={phase:'guards',t:0,scroll:0,picks:[{k:'ext',x:W*0.45,y:206,taken:false}]};M.picks=M.d.picks;M.cam=0;M.camY=0}
-function initFinale(){M.f={t:0,ph:'plane',px:0,badge:false};M.st='run'}
+function initFinale(){M.f={t:0,ph:'hover',hx:W*1.2,hy:-60,wash:0,boatX:W*0.46};M.fade=1;M.st='run'}
 
 /* ---------- update ---------- */
 function update(dt){if(!M)return;for(var i=0;i<SPEED;i++)step(dt)}
@@ -332,20 +333,15 @@ function autoRide(){var b=M.b,thr=null;b.obs.forEach(function(o){var ahead=o.x-b
  if(thr.a<26&&b.z===0&&b.jumpCd<=0){press('jump');return 0}
  var up=thr.o.y-CFG.bay.ymin,dn=CFG.bay.ymax-thr.o.y;return thr.o.y>b.y?(up>22?-1:1):(dn>22?1:-1)}
 /* ---------- finale ---------- */
-function stepFinale(dt){var f=M.f;f.t+=dt;var t=f.t;
- if(f.ph==='plane'){var X0=W*0.76;if(t<2){f.px=lerp(W+150,X0,1-Math.pow(1-t/2,2));f.py=200}else if(t<3.3){f.px=X0;f.py=200}else if(t<6.4){f.px=X0+(t-3.3)*12;f.py=200-(t-3.3)*22}else{f.px=X0+37+(t-6.4)*(t-6.4)*90+(t-6.4)*20;f.py=132-(t-6.4)*40}
-  f.tx=f.px-50;f.ty=f.py-22;f.shake=t>5.2&&t<6.4;
-  if(t>1.2&&!f.c1){f.c1=1;M.wait=true;emit('talk','chiefPlane')}
-  if(t>2.8&&!f.c2){f.c2=1;sfx('kwhoosh');emit('grab')}
-  if(t>5.2&&!f.c3){f.c3=1;shake(0.5);burst(f.tx,f.ty+20,'WHOA!',true,'#ff9ad8');emit('shaken')}
-  if(t>6.4&&!f.c4){f.c4=1;f.fall=0.01;f.fx=f.tx;f.fy=f.ty}
-  if(f.fall){f.fall+=dt;if(f.fall>0.9&&!f.sp){f.sp=1;splashAt(f.fx,212,30,true);shake(0.5);sfx('crash');burst(f.fx,176,'SPLASH!',true,'#7dfcff');emit('drop')}}
-  if(t>7.6)M.fade=Math.min(1,(t-7.6)/0.8);
-  if(t>8.4){f.ph='sunrise';f.t=0;M.fade=1}return}
- M.fade=Math.max(0,1-t/1);
- if(t>2.4&&!f.badge){f.badge=true;sfx('chime');burst(W*0.42,140,'!',false,'#ffd23a');emit('badge')}
- if(t>3.4&&!f.c5){f.c5=1;M.wait=true;emit('talk','badge')}
- if(t>3.6&&!f.c6){f.c6=1;M.st='done';emit('end',stats())}}
+function stepFinale(dt){var f=M.f;f.t+=dt;var t=f.t;M.fade=Math.max(0,1-t/0.8);
+ /* the chief's helicopter drops in and holds a hover over Escobar's boat */
+ var k=Math.min(1,t/2.4),e=1-Math.pow(1-k,3);f.hx=lerp(W*1.25,W*0.6,e)+Math.sin(t*0.9)*5;f.hy=lerp(-30,H*0.4,e)+Math.sin(t*1.7)*3;f.wash=Math.min(1,t/1.6);f.boatX=W*0.46;
+ if(Math.random()<dt*36*f.wash){var a=Math.random()<0.5?-1:1;part(f.boatX+a*rnd(W*0.18,W*0.3),206+rnd(-3,3),a*rnd(60,170),rnd(-70,-15),rnd(0.4,0.8),'rgba(220,250,255,.75)',rnd(1,2.4),120,'drop')}
+ if(t>0.9&&!f.c0){f.c0=1;sfx('kwhoosh');shake(0.3);emit('hover')}
+ if(t>2.6&&!f.c1){f.c1=1;M.wait=true;emit('talk','chiefHover')}
+ if(t>3.2&&!f.toast){f.toast=0.01;sfx('chime');emit('toast')}
+ if(f.toast)f.toast+=dt;
+ if(t>5.4&&!f.c2){f.c2=1;M.st='done';emit('end',stats())}}
 function stats(){var s=M.stats;return {score:M.score,kos:s.kos,chand:s.chand,sharks:s.sharks,weapons:s.weapons,rages:s.rages,airs:s.airs,flips:s.flips,crashes:s.crashes,tiles:s.tiles,retries:s.retries,time:s.time,maxCombo:s.maxCombo,lives:M.lives}}
 /* ---------- AUTO (auto fight / auto climb / auto ride) ---------- */
 function autoFight(){var p=M.p,a={x:0,y:0},B=bounds();if(p.act||p.downT>0||p.hang>0)return a;
@@ -380,7 +376,7 @@ function press(k){if(!M)return false;var s=M.stage;
 function setAuto(b){AUTO=!!b;emit('auto',AUTO)}
 
 /* ---------- render ---------- */
-var SF={r:1,esc:-1,tank:-1,chief:-1,guard:1,heli:-1,seaplane:-1,boat:1,yacht:1,shark:-1};
+var SF={r:1,esc:-1,tank:-1,chief:-1,guard:1,heli:-1,seaplane:-1,boat:-1,yacht:-1,shark:-1};
 function drawSpr(g,k,x,y,face,base,sc,rot,al){var im=SPR[k],m=META[k];if(!im||!m)return false;sc=sc||1;var w=m[0]/2*sc,h=m[1]/2*sc,ax=m[2]/2*sc,fl=(face||base||1)!==(base||1);
  g.save();g.translate(x,y);if(rot)g.rotate(rot);if(fl)g.scale(-1,1);if(al!=null)g.globalAlpha*=al;g.drawImage(im,-ax,-h,w,h);g.restore();return true}
 function cover(g,k,ox,oy,sc){var im=SPR[k];if(!im)return false;g.drawImage(im,ox,oy,im.width/2*sc,im.height/2*sc);return true}
@@ -538,14 +534,14 @@ function bayBg(g,d){var im=SPR['l6-bay-far'],top=132,bw=Math.max(W,400*1.15);
 function fireworks(g,list){g.save();g.globalCompositeOperation='lighter';list.forEach(function(f){g.fillStyle=f.c;g.fillRect(f.x-1,f.y,2,6)});M.parts.forEach(function(p){if(p.k!=='fw')return;var a=1-p.t/p.life;g.fillStyle=p.c;g.globalAlpha=a;g.fillRect(p.x-p.s/2,p.y-p.s/2,p.s,p.s)});g.globalAlpha=1;g.restore()}
 function renderBay(g){var b=M.b,B=CFG.bay,PX=W*PXF,top=bayBg(g,b.d);fireworks(g,b.works);
  /* the final yacht: ramp */
- if(b.final||b.ramp-b.d<W){var yx=PX+(b.ramp-b.d)+90;drawSpr(g,'l6-yacht',yx,178,1,1,0.9)}
+ if(b.final||b.ramp-b.d<W){var yx=PX+(b.ramp-b.d)+90;drawSpr(g,'l6-yacht',yx,178,1,SF.yacht,0.9)}
  /* yacht wakes (jumps): a yacht crossing up top, its foamy wake across the lanes */
- b.wakes.forEach(function(w){var x=PX+(w.x-b.d);if(x<-120||x>W+160)return;drawSpr(g,'l6-yacht',x+70,B.ymin-2,1,1,0.34);g.save();g.globalCompositeOperation='lighter';for(var k=0;k<3;k++){g.strokeStyle='rgba(230,250,255,'+(0.55-k*0.15)+')';g.lineWidth=3-k;g.beginPath();g.moveTo(x+40+k*6,B.ymin);g.quadraticCurveTo(x+k*6-6,(B.ymin+B.ymax)/2,x-20+k*6,B.ymax+8);g.stroke()}g.restore();
+ b.wakes.forEach(function(w){var x=PX+(w.x-b.d);if(x<-120||x>W+160)return;drawSpr(g,'l6-yacht',x+70,B.ymin-2,1,SF.yacht,0.34);g.save();g.globalCompositeOperation='lighter';for(var k=0;k<3;k++){g.strokeStyle='rgba(230,250,255,'+(0.55-k*0.15)+')';g.lineWidth=3-k;g.beginPath();g.moveTo(x+40+k*6,B.ymin);g.quadraticCurveTo(x+k*6-6,(B.ymin+B.ymax)/2,x-20+k*6,B.ymax+8);g.stroke()}g.restore();
   if(!w.used&&x>PX&&x<W){g.font='bold 7px monospace';g.textAlign='center';g.fillStyle='#7dfcff';g.fillText('JUMP',x+10,B.ymax+18)}});
  /* obstacles: buoys + floating crates */
  var ents=[];b.obs.forEach(function(o,i){var x=PX+(o.x-b.d);if(x<-20||x>W+20||o.hit)return;ents.push({y:o.y,f:function(){var bob=Math.sin(M.t*3+i)*1.5;shadow(g,x,o.y+2,9,0.3);if(i%2){g.fillStyle='#ff3a5a';g.fillRect(x-5,o.y-18+bob,10,18);g.fillStyle='#fff';g.fillRect(x-5,o.y-12+bob,10,4);g.fillStyle='#ffd23a';g.beginPath();g.arc(x,o.y-20+bob,2,0,7);g.fill()}else{g.fillStyle='#8a5a32';g.fillRect(x-9,o.y-14+bob,18,14);g.strokeStyle='#5a3a1a';g.strokeRect(x-9,o.y-14+bob,18,14);g.beginPath();g.moveTo(x-9,o.y-14+bob);g.lineTo(x+9,o.y+bob);g.stroke()}}})});
  /* Escobar's speedboat */
- var bx=Math.min(W-60,PX+90+b.gap*0.6),byy=176+Math.sin(M.t*1.3)*6;if(!b.leap)ents.push({y:176,f:function(){shadow(g,bx,byy+6,50,0.3);drawSpr(g,'l6-esc-walk',bx+12,byy-4,-1,SF.esc,0.34);drawSpr(g,'l6-boat',bx,byy+8,1,1,0.75,Math.sin(M.t*6)*0.02);g.fillStyle='rgba(230,250,255,.75)';for(var j=0;j<8;j++)g.fillRect(bx-60-Math.random()*40,byy+2+Math.random()*8,6,2)}});
+ var bx=Math.min(W-60,PX+90+b.gap*0.6),byy=176+Math.sin(M.t*1.3)*6;if(!b.leap)ents.push({y:176,f:function(){shadow(g,bx,byy+6,50,0.3);drawSpr(g,'l6-esc-walk',bx+12,byy-4,-1,SF.esc,0.34);drawSpr(g,'l6-boat',bx,byy+8,1,SF.boat,0.75,Math.sin(M.t*6)*0.02);g.fillStyle='rgba(230,250,255,.75)';for(var j=0;j<8;j++)g.fillRect(bx-60-Math.random()*40,byy+2+Math.random()*8,6,2)}});
  /* Richie on the jet ski */
  ents.push({y:b.y,f:function(){shadow(g,PX,b.y,22,0.35*(1-Math.min(1,b.z/80)));var k=b.z>0?'l6-r-skijump':'l6-r-ski';var rot=b.flip>0?-b.flip*Math.PI*2:b.z>0?-0.12:Math.sin(M.t*8)*0.02;if(b.hurtT>0&&Math.floor(M.t*16)%2)g.globalAlpha=0.6;drawSpr(g,k,PX,b.y-b.z,1,1,0.75,rot);g.globalAlpha=1;if(b.boost>0){g.save();g.globalCompositeOperation='lighter';g.fillStyle='rgba(41,214,255,.5)';g.beginPath();g.moveTo(PX-30,b.y-b.z-12);g.lineTo(PX-70-Math.random()*20,b.y-b.z-6);g.lineTo(PX-30,b.y-b.z);g.fill();g.restore()}}});
  ents.sort(function(a,c){return a.y-c.y});ents.forEach(function(e){e.f()});
@@ -558,27 +554,44 @@ function renderDeck(g){var d=M.d;bayBg(g,d.scroll);fireworks(g,M.dworks||[]);dec
  (M.picks||[]).forEach(function(k){if(!k.taken)pickup(g,k,k.x,k.y)});
  var ents=M.foes.map(function(e){return [e,0]}).concat([[M.p,1]]);ents.sort(function(a,b){return a[0].y-b[0].y});ents.forEach(function(it){drawBody(g,it[0],it[0].x,it[0].y,it[1]===1)});
  var sx=W*0.75+Math.sin(M.t*0.7)*W*0.2;g.save();g.globalCompositeOperation='lighter';var l=g.createRadialGradient(sx,40,2,sx,40,140);l.addColorStop(0,'rgba(255,58,216,.12)');l.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=l;g.fillRect(0,0,W,H);g.restore();vignette(g,0.5)}
-function renderFinale(g){var f=M.f;
- if(f.ph==='plane'){var t=f.t;bayBg(g,M.t*60*Math.max(0.2,1-t/6));
-  /* the stern of Escobar's boat on the left, open water on the right */
-  var de=W*0.5;g.fillStyle='#e8e0ea';g.beginPath();g.moveTo(-10,166);g.lineTo(de,163);g.lineTo(de+14,224);g.lineTo(-10,226);g.fill();g.fillStyle='#c0306a';g.fillRect(-10,219,de+24,6);g.strokeStyle='#cfd6e6';g.lineWidth=1.5;g.beginPath();g.moveTo(0,140);g.lineTo(de-6,137);g.stroke();
-  drawSpr(g,'l6-esc-down',W*0.26,206,-1,SF.esc);stars(g,W*0.26,186,M.t);
-  var px=f.px,py=f.py,wob=f.shake?Math.sin(t*16)*0.12:0;shadow(g,px,206,50,0.25*Math.max(0,1-(206-py)/80));drawSpr(g,'l6-seaplane',px,py,1,SF.seaplane,0.9,wob);drawSpr(g,'l6-chief-wave',px+30,py-26,1,SF.chief,0.28,wob);
-  var tx=f.tx,ty=f.ty;
-  if(t<2)drawSpr(g,'l6-r-guard',W*0.16,204,1,1);else if(t<2.8){var k1=(t-2)/0.8;drawSpr(g,'l6-r-walk-'+(Math.floor(t*8)%2),lerp(W*0.16,de-10,k1),204,1,1)}
-  else if(t<3.3){var k=(t-2.8)/0.5;drawSpr(g,'l6-r-fkick',lerp(de-10,tx,k),lerp(204,ty+110,k)-Math.sin(k*Math.PI)*36,1,1)}
-  else if(!f.fall)drawSpr(g,'l6-r-hang',tx,ty+112,1,1,1,Math.sin(t*(f.shake?16:4))*(f.shake?0.3:0.08));
-  else{var fk=Math.min(1,f.fall/0.9);if(!f.sp)drawSpr(g,'l6-r-hurt',f.fx,lerp(f.fy+100,236,fk*fk),1,1,1,fk*3)}
-  if(t>1.2&&t<3)bubble(g,px,py-60,'TOO SLOW, RICHIE!');
-  g.fillStyle='rgba(0,0,0,'+M.fade+')';g.fillRect(0,0,W,H);return}
- var im=SPR['l6-sunrise'],s=Math.max(W/400,H/225);if(im)g.drawImage(im,(W-400*s)/2,(H-225*s)/2,400*s,225*s);else{var gg=g.createLinearGradient(0,0,0,H);gg.addColorStop(0,'#ff8a5a');gg.addColorStop(1,'#3a2a6a');g.fillStyle=gg;g.fillRect(0,0,W,H)}
- var t=f.t,wl=196;/* the seaplane, a speck flying into the sun */var k2=Math.min(1,t/5);drawSpr(g,'l6-seaplane',lerp(W*0.72,W*0.52,k2),lerp(H*0.36,H*0.3,k2),-1,SF.seaplane,lerp(0.22,0.05,k2),0,1-k2*0.6);
- g.save();g.globalCompositeOperation='lighter';for(var y=wl;y<H;y+=3){g.fillStyle='rgba(255,200,120,'+(0.14*(1-(y-wl)/(H-wl)))+')';g.fillRect(W/2-30+Math.sin(y+M.t*2)*8,y,60,1.2)}g.restore();
- var rx=W*0.42,bob=Math.sin(M.t*1.6)*1.5;g.save();g.beginPath();g.rect(0,0,W,wl+bob+2);g.clip();drawSpr(g,f.badge?'l6-r-upper':'l6-r-guard',rx,wl+bob+(f.badge?118:96),1,1);g.restore();
- var wg=g.createLinearGradient(0,wl,0,H);wg.addColorStop(0,'rgba(60,40,90,.7)');wg.addColorStop(1,'rgba(20,10,40,.9)');g.fillStyle=wg;g.fillRect(0,wl+bob+2,W,H);g.strokeStyle='rgba(255,220,180,.6)';g.beginPath();g.ellipse(rx,wl+bob+2,24,4,0,0,7);g.stroke();
- if(!f.badge)drawSpr(g,'l6-badge',W*0.52,wl+3+Math.sin(M.t*2)*2,1,1,0.6);else{var bx=rx-12,by=wl+bob-(118-6)+6;drawSpr(g,'l6-badge',bx,by+22,1,1,0.6);g.save();g.globalCompositeOperation='lighter';var gl=g.createRadialGradient(bx,by+10,1,bx,by+10,18);gl.addColorStop(0,'rgba(255,230,120,.8)');gl.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gl;g.fillRect(bx-20,by-10,40,40);g.restore()}
- if(f.badge){g.fillStyle='#ffd23a';g.font='bold 10px monospace';g.textAlign='center';var gl2=Math.sin(M.t*5)*0.5+0.5;g.globalAlpha=gl2;g.fillText('\u2726',rx-4,wl-130);g.globalAlpha=1}
- g.fillStyle='rgba(0,0,0,'+M.fade+')';g.fillRect(0,0,W,H)}
+/* the chief's black unmarked helicopter, nose to the right (the way the boat travels), side door slid open:
+   a warm cabin light, and the chief standing in the doorway with her drink */
+function heliDoor(g,x,y,s,f){var im=SPR['l6-heli'],w=150*s,h=58.5*s,X=function(px){return w/2-px/2*s},Y=function(py){return -h+py/2*s};
+ g.save();g.translate(x,y);g.rotate(Math.sin(M.t*1.3)*0.025);
+ g.save();g.scale(-1,1);if(im)g.drawImage(im,-w/2,-h,w,h);else{g.fillStyle='#0c0c12';g.beginPath();g.ellipse(0,-h*0.5,w*0.32,h*0.3,0,0,7);g.fill();g.fillRect(w*0.1,-h*0.55,w*0.38,h*0.08);g.fillRect(-w*0.4,-h*0.05,w*0.6,2)}g.restore();
+ var x0=X(140),x1=X(98),y0=Y(44),y1=Y(86),dw=x1-x0,dh=y1-y0;
+ var lg=g.createLinearGradient(0,y0,0,y1);lg.addColorStop(0,'#7a4a2c');lg.addColorStop(1,'#1c1018');g.fillStyle=lg;g.fillRect(x0,y0,dw,dh);
+ /* the slid-back door panel */g.fillStyle='#14141c';g.fillRect(x0-dw*0.55,y0+1,dw*0.5,dh-2);g.strokeStyle='rgba(255,58,216,.35)';g.lineWidth=0.6;g.strokeRect(x0-dw*0.55,y0+1,dw*0.5,dh-2);
+ g.save();g.beginPath();g.rect(x0,y0,dw,dh);g.clip();
+ var cs=dh*0.96/(191/2),bob=f.toast?-Math.min(1,f.toast*3)*dh*0.04:0,cx=x0+dw*0.5,cy=y1+bob;
+ if(!drawSpr(g,'l6-chief-cross',cx,cy,-1,SF.chief,cs)){fig(g,cx,cy,dh*0.95,'#1c2a5a')}
+ g.restore();
+ /* cabin glow + the glint off her glass */
+ g.save();g.globalCompositeOperation='lighter';var gl=g.createRadialGradient(cx,y0+dh*0.4,1,cx,y0+dh*0.4,dw);gl.addColorStop(0,'rgba(255,190,120,.25)');gl.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gl;g.fillRect(x0-dw,y0-dh*0.3,dw*3,dh*1.6);
+ if(f.toast&&Math.floor(M.t*4)%2===0){var gx=cx+(10-25.5)*cs,gy=cy-(95.5-19)*cs;g.fillStyle='#ffe9a8';g.font='bold '+Math.max(5,Math.round(7*cs*2))+'px monospace';g.textAlign='center';g.fillText('\u2726',gx,gy+2)}
+ g.restore();g.restore();
+ /* the rotor blur */
+ g.strokeStyle='rgba(255,255,255,'+(0.3+Math.random()*0.3)+')';g.lineWidth=1;g.beginPath();g.ellipse(x,y-h+2*s,w*0.42,2.5*s,0,0,7);g.stroke();
+ return {cx:x+cx,cy:y+y0,nx:x+X(45),ny:y+Y(100)}}
+function renderFinale(g){var f=M.f,t=f.t;bayBg(g,M.t*140);
+ var bx=f.boatX||W*0.46,by=206+Math.sin(M.t*1.4)*1.5,bs=Math.min(1.05,W/380),rock=Math.sin(M.t*1.1)*0.015;
+ /* the wake trails behind the boat: it is heading right */
+ g.save();g.globalCompositeOperation='lighter';for(var j=0;j<16;j++){var wx=bx-72*bs-j*12-Math.random()*5;g.fillStyle='rgba(220,245,255,'+(0.5-j*0.025)+')';g.fillRect(wx,by-3-j*0.4+Math.sin(j+M.t*6),8,1.5);g.fillRect(wx,by+2+j*0.5+Math.sin(j*2+M.t*5),8,1.2)}g.restore();
+ /* rotor-wash rings flattening the water */
+ if(f.wash){g.lineWidth=1;for(var i=0;i<3;i++){var rr=((M.t*70+i*32)%96)+16;g.strokeStyle='rgba(220,250,255,'+(0.35*f.wash*(1-rr/112))+')';g.beginPath();g.ellipse(f.hx-W*0.08,by+5,rr*1.7,rr*0.22,0,0,7);g.stroke()}}
+ shadow(g,bx,by+5,80*bs,0.3);
+ /* Escobar's speedboat, bow pointing the way it travels */
+ drawSpr(g,'l6-boat',bx,by+7,1,SF.boat,bs,rock);
+ drawSpr(g,'l6-esc-down',bx-30*bs,by-13,-1,SF.esc,0.4*bs);stars(g,bx-30*bs,by-22,M.t);
+ drawSpr(g,'l6-r-guard',bx+18*bs,by-11,1,SF.r,0.4*bs);
+ /* the helicopter + its spotlight on the deck */
+ var hs=Math.min(1.5,W/270),hp=heliDoor(g,f.hx,f.hy,hs,f);
+ g.save();g.globalCompositeOperation='lighter';var cone=g.createLinearGradient(hp.nx,hp.ny,bx,by);cone.addColorStop(0,'rgba(255,250,220,.4)');cone.addColorStop(1,'rgba(255,250,220,.07)');g.fillStyle=cone;g.beginPath();g.moveTo(hp.nx-3,hp.ny);g.lineTo(hp.nx+3,hp.ny);g.lineTo(bx+50*bs,by+2);g.lineTo(bx-46*bs,by+2);g.closePath();g.fill();
+ var pool=g.createRadialGradient(bx,by-4,2,bx,by-4,60*bs);pool.addColorStop(0,'rgba(255,250,220,.32)');pool.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=pool;g.beginPath();g.ellipse(bx,by-4,60*bs,16,0,0,7);g.fill();g.restore();
+ /* rotor wash: streaks and rain blown sideways */
+ if(f.wash){g.save();g.globalCompositeOperation='lighter';g.strokeStyle='rgba(255,255,255,'+(0.22*f.wash)+')';g.lineWidth=1;g.beginPath();for(var q=0;q<16;q++){var yy=f.hy+20+((q*29+M.t*80)%(H-f.hy)),xx=((q*83+M.t*380)%(W+80))-40;g.moveTo(xx,yy);g.lineTo(xx+26,yy+4)}g.stroke();g.restore()}
+ if(f.toast&&f.toast<2.4)bubble(g,hp.cx,hp.cy-14,'CHEERS, RICHIE.');
+ vignette(g,0.5);if(M.fade>0){g.fillStyle='rgba(0,0,0,'+M.fade+')';g.fillRect(0,0,W,H)}}
 
 function drawFx(g,ox,oy){/* particles (world-ish coords: x - cam, y + camY) */
  M.parts.forEach(function(p){if(p.k==='fw')return;var a=1-p.t/p.life,x=p.x-ox,y=p.y+oy;g.globalAlpha=Math.max(0,a);g.fillStyle=p.c;if(p.k==='cloud'){g.beginPath();g.arc(x,y,p.s*(1+p.t*2),0,7);g.fill()}else g.fillRect(x-p.s/2,y-p.s/2,p.s,p.s)});g.globalAlpha=1;
@@ -616,7 +629,8 @@ function snap(){if(!M)return null;var p=M.p||{},o={stage:M.stage,st:M.st,cine:M.
  if(M.stage==='roof'){o.wash=M.r.washOn;o.launched=M.r.launched;o.splash=!!M.r.splash;o.hang=p.hang>0;o.heliAway=!!M.r.heli.away}
  if(M.stage==='bay'){var b=M.b;o.d=Math.round(b.d);o.len=CFG.bay.len;o.gap=Math.round(b.gap);o.meter=+b.meter.toFixed(2);o.z=Math.round(b.z);o.final=b.final;o.leap=!!b.leap;o.by=Math.round(b.y)}
  if(M.stage==='deck'){o.phase=M.d.phase}
- if(M.stage==='finale'){o.ph=M.f.ph;o.badge=M.f.badge}
+ if(M.stage==='finale'){o.ph=M.f.ph;o.hover=M.f.t>2.4;o.talked=!!M.f.c1;o.toast=!!M.f.toast;o.heli={x:Math.round(M.f.hx),y:Math.round(M.f.hy)};o.boatX=Math.round(M.f.boatX)}
+ if(M.stage==='bay'||M.stage==='finale')o.boatFace=SF.boat
  return o}
 function portrait(cv,who){var k={chief:'l6-chief-portrait',esc:'l6-esc-portrait',tank:'l6-tank-portrait',guard:'l5-guard-portrait'}[who],im=SPR[k];if(!cv||!im)return false;var g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);g.drawImage(im,0,0,cv.width,cv.height);return true}
 var dev={state:function(){return M},weak:function(){(M.foes||[]).forEach(function(e){if(e.st!=='ko')e.hp=1})},rage:function(){M.rage=CFG.rageMax},give:function(k){M.p.weapon=k;M.p.uses=CFG.USES[k];emit('pickup',{k:k,uses:M.p.uses})},
