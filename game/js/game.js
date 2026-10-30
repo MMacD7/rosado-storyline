@@ -1,4 +1,6 @@
-/* Rosado Nights · v0.4.0
+/* Rosado Nights · v0.5.0
+   Level 5 "Escobar's Mansion" (v0.5.0, js/mansion.js): fly through neon rings -> parachute onto the lawn target -> sneak past the guards to the front door.
+   Reached from the Level 4 complete card (CONTINUE TO LEVEL 5) or game/?start=mansion.
    Level 4 "The Airfield" (v0.4.0): chase (drive.js chase mode) -> airfield fight (fight.js 'airfield' stage, Big Manny + Aces) -> plane ending (js/plane.js).
    Reached from the Level 3 complete card (CONTINUE TO LEVEL 4) or game/?start=airfield.
    Level 3 "The Alley" (js/fight.js): side-scrolling street brawl vs El Jefe Esteban Lavanda; only reachable from the Level 2 complete card.
@@ -9,15 +11,15 @@
    No network, no tracking. localStorage only keeps level-1-done + best combo / best bag time. */
 (function(){
 "use strict";
-var VERSION='0.4.0';
-var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight,PLANE=window.RosadoPlane;
+var VERSION='0.5.0';
+var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight,PLANE=window.RosadoPlane,MAN=window.RosadoMansion;
 var $=function(id){return document.getElementById(id)};
 var app=$('app'),cv=$('scene'),g=cv.getContext('2d'),buf=document.createElement('canvas'),bg=null,bgW=0;
 var LH=ART.H;
 /* Optional art: put images in game/assets/ and list them here to replace the canvas art (slot boxes are documented in art.js).
    Leave a slot out (or let the file fail to load) and the built-in canvas art is used. Example:
    var SPRITES={'bg':'assets/gym-bg.webp?v=0.1.0','apollo-spot':'assets/apollo-spot.webp?v=0.1.0','richie-bench-down':'assets/richie-bench-down.webp?v=0.1.0'}; */
-var AV='?v=0.4.0',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
+var AV='?v=0.5.0',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
  'richie-idle':'assets/richie-idle.webp'+AV,'apollo-cross':'assets/apollo-cross.webp'+AV,
  'richie-portrait':'assets/richie-portrait.webp'+AV,'apollo-portrait':'assets/apollo-portrait.webp'+AV};
 /* multi-frame sprites (v0.2.1): bench press 0-2, Apollo spot/cheer, boxing guard/guard-low/jab/cross, walk cycle */
@@ -27,6 +29,7 @@ var DSPRITES={car:'assets/drive-car.webp'+AV,biker:'assets/drive-biker.webp'+AV,
  supercar:'assets/drive-supercar.webp'+AV,'traffic-0':'assets/drive-traffic-0.webp'+AV,'traffic-1':'assets/drive-traffic-1.webp'+AV,'traffic-2':'assets/drive-traffic-2.webp'+AV,sky4:'assets/drive-sky4.webp'+AV,air:'assets/l4-bg-b.webp'+AV};
 var PSPRITES={};PLANE.SLOTS.forEach(function(k){PSPRITES[k]='assets/'+k+'.webp'+AV});
 
+var MSPRITES={};MAN.SLOTS.forEach(function(k){MSPRITES[k]='assets/'+k+'.webp'+AV});
 var FSPRITES={};FIGHT.SLOTS.forEach(function(k){FSPRITES[k]='assets/'+k+'.webp'+AV});
 
 /* ---------- difficulty ---------- */
@@ -38,9 +41,11 @@ var BAG={target:12,time:45,every:3,
  center:[0.5,0.6,0.42,0.55],perfect:0.035,cdGood:0.18,cdMiss:0.45};
 
 /* ---------- state ---------- */
-var S,musicOn=true,paused=false,started=false,last=0,clock=0,level=1,dsnap=null,L4='';
+var S,musicOn=true,paused=false,started=false,last=0,clock=0,level=1,dsnap=null,L4='',L5='';
 /* L4: '' outside Level 4, else 'intro' | 'chase' | 'fight' | 'plane' | 'done'. The engine level stays 1 (drive) / 3 (fight) / 4 (plane) so the existing controls are reused */
 function setL4(ph){L4=ph||'';app.dataset.l4=L4}
+/* L5: '' outside Level 5, else 'intro' | 'fly' | 'chute' | 'stealth' | 'done' (engine level 5 = js/mansion.js) */
+function setL5(ph){L5=ph||'';app.dataset.l5=L5}
 function fresh(){return {phase:'intro',rep:0,h:0,hDisp:0,peak:0,lastTap:-9,taps:0,tapsPerRep:[],timer:0,
  hits:0,combo:0,bestCombo:0,misses:0,perfects:0,timeLeft:BAG.time,m:0,cd:0,punchT:-1,bagAng:0,bagVel:0,bagFlash:0,bagSquash:0,
  parts:[],shake:0,shout:'',shoutT:0,apolloExpr:'smile',richieExpr:'calm',apolloArms:'cross',fistT:0,bagStart:0,record:false,lastPunch:-9,punchSide:0,flash:0,exitX:null,walking:false,story:[]}}
@@ -56,7 +61,7 @@ function resize(){
  W=Math.max(ch>cw*0.9?260:300,Math.min(500,Math.round(cw/ch*LH)));
  scale=Math.min(cw/W,ch/LH);ox=(cw-W*scale)/2;oy=(ch-LH*scale)/2;
  cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);
- var bs=level===3?2:1;if(W!==bgW){bg=ART.makeBg(W);bgW=W}if(buf.width!==W*bs||buf.height!==LH*bs){buf.width=W*bs;buf.height=LH*bs}
+ var bs=level===3||level===5?2:1;if(W!==bgW){bg=ART.makeBg(W);bgW=W}if(buf.width!==W*bs||buf.height!==LH*bs){buf.width=W*bs;buf.height=LH*bs}
  render();
 }
 
@@ -81,12 +86,12 @@ function talk(lines,done){
 }
 function nextLine(){
  DQ.i++;if(DQ.i>=DQ.lines.length){var d=DQ.done;DQ=null;$('dialog').hidden=true;if(d)d();return}
- var L=DQ.lines[DQ.i],who=$('who');who.textContent=L.who==='richie'?'RICHIE':L.who==='biker'?'BIKER GANG':L.who==='jefe'?'EL JEFE':L.who==='manny'?'BIG MANNY':L.who==='aces'?'ACES':'FLEXECUTIONER';who.className='who '+L.who;
+ var L=DQ.lines[DQ.i],who=$('who');who.textContent=L.who==='richie'?'RICHIE':L.who==='biker'?'BIKER GANG':L.who==='jefe'?'EL JEFE':L.who==='manny'?'BIG MANNY':L.who==='aces'?'ACES':L.who==='guard'?'GUARD':'FLEXECUTIONER';who.className='who '+L.who;
  if(L.on)L.on();
  face(L.who,L.expr||'smile');DQ.full=L.text;DQ.typed=0;DQ.shownAt=clock;$('line').textContent='';
  if(L.who==='apollo')S.apolloExpr=L.expr||'smile';
 }
-function face(who,expr){if(who==='biker')DRIVE.portrait($('face'));else if(who==='jefe'||who==='manny'||who==='aces')FIGHT.portrait($('face'),who);else ART.portrait($('face'),who,expr)}
+function face(who,expr){if(who==='biker')DRIVE.portrait($('face'));else if(who==='jefe'||who==='manny'||who==='aces')FIGHT.portrait($('face'),who);else if(who==='guard')MAN.portrait($('face'));else ART.portrait($('face'),who,expr)}
 function tapDialog(){
  if(!DQ||paused)return;if(clock-DQ.shownAt<0.25)return;
  if(DQ.typed<DQ.full.length){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;return}
@@ -94,6 +99,7 @@ function tapDialog(){
 }
 function typeTick(dt){if(!DQ||DQ.typed>=DQ.full.length)return;var n=Math.min(DQ.full.length,DQ.typed+dt*48);if(Math.floor(n)!==Math.floor(DQ.typed))$('line').textContent=DQ.full.slice(0,Math.floor(n));DQ.typed=n;if(n>=DQ.full.length)$('line').textContent=DQ.full}
 
+var Gd=function(t){return {who:'guard',text:t}};
 var J=function(t){return {who:'jefe',text:t,expr:'smile'}},Mn=function(t){return {who:'manny',text:t}},Ac=function(t){return {who:'aces',text:t}};
 var A=function(t,e){return {who:'apollo',text:t,expr:e||'smile'}},Rc=function(t,e){return {who:'richie',text:t,expr:e||'smile'}},Bk=function(t,f){return {who:'biker',text:t,on:f}};
 var DLINES={
@@ -137,15 +143,25 @@ var FLINES4={
  duoDown:[Ac('My shades... these were limited edition.'),Mn('Five more minutes, Ma...'),Rc('Nice plane. I\u2019ll take it from here.','smile')]
 };
 
+/* Level 5 lines (the guards are original characters) */
+var MLINES={
+ fly:[Rc('Escobar\u2019s place is up on that hill. Let\u2019s take the scenic route.','calm'),
+  Rc('Joystick up and down to climb and dive through the neon rings. BOOST for speed. Or tap AUTO PILOT.','smile')],
+ chute:[Rc('Geronimo!','strain'),Rc('\u25C0 \u25B6 to steer against the wind, FLARE to slow down. Land in the glowing ring and stay out of the searchlights! Or tap AUTO CHUTE.','smile')],
+ stealth:[Gd('You hear something?'),Gd('Just the wind. Keep walking.'),
+  Rc('Quiet now. SNEAK behind the hedges and stay out of the flashlights.','calm'),
+  Rc('SHOOT knocks them out cold. Grab AMMO boxes. Clear the guards, then the front door. Or tap AUTO SNEAK.','smile')],
+ door:[Rc('Knock knock, Escobar.','calm')]
+};
 /* ---------- flow ---------- */
 function begin(lv){
  SFX.unlock();if(musicOn&&T&&T.supported)T.play();
  started=true;$('intro').hidden=true;if(lv===2)startLevel();else startDrive();
 }
-function setLevel(lv){var was=level;level=lv;app.dataset.level=String(lv);app.dataset.l4=L4;document.title=L4?'Rosado Nights \u00B7 Level 4: The Airfield':lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
- var a=$('scene');a.setAttribute('aria-label',L4?'The Airfield: Richie tails the yellow supercar, fights at the hangar and flies off':lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
+function setLevel(lv){var was=level;level=lv;if(lv!==5){setL5('');mctl(false);mAuto(false)}app.dataset.level=String(lv);app.dataset.l4=L4;document.title=lv===5?'Rosado Nights \u00B7 Level 5: Escobar\u2019s Mansion':L4?'Rosado Nights \u00B7 Level 4: The Airfield':lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
+ var a=$('scene');a.setAttribute('aria-label',lv===5?'Escobar\u2019s Mansion: Richie flies in, parachutes onto the lawn and sneaks past the guards':L4?'The Airfield: Richie tails the yellow supercar, fights at the hangar and flies off':lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
  if(lv!==3){if(typeof CUT==='object'&&CUT&&CUT.on){CUT.done=true;cutClose()}fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true}if(was!==lv)resize()}
-function cards(){['done','done1','done3','intro3','intro4','done4'].forEach(function(id){$(id).hidden=true})}
+function cards(){['done','done1','done3','intro3','intro4','done4','intro5','done5'].forEach(function(id){$(id).hidden=true})}
 /* ---------- level 1: the drive ---------- */
 function startDrive(){
  setL4('');DRIVE.setMode('causeway');setLevel(1);S=fresh();S.phase='drive';cards();$('record').hidden=true;setMode('');hud(true);dctl(false);DRIVE.intro();setSelf(false);
@@ -257,6 +273,62 @@ function showDone4(){setL4('done');S.phase='done4';S.shoutT=0;$('shout').classLi
  var cs=DRIVE.snap().stats||{};
  $('stats4').innerHTML='Chase: <b>'+(cs.time||0).toFixed(1)+'s</b> \u00B7 traffic dodged: <b>'+(cs.passed||0)+'</b>'+(cs.retries?' \u00B7 retries: '+cs.retries:'')+'<br>Fight score: <b>'+(f.score||0)+'</b> \u00B7 lives left: <b>'+(f.lives==null?3:f.lives)+'</b><br><small>Your best: '+best+'</small>';
  $('done4').hidden=false;var cc=$('done4').querySelector('.cardin');if(cc){cc.classList.remove('burst');void cc.offsetWidth;cc.classList.add('burst')}}
+/* ---------- level 5: Escobar's mansion ---------- */
+var AUTOLBL={fly:'AUTO PILOT',chute:'AUTO CHUTE',stealth:'AUTO SNEAK'};
+function mctl(on){app.dataset.mctl=on?'1':'0';if(!on){MAN.move(0,0);mstickReset();mkeys={};mhold={}}}
+function mAuto(on){MAN.setAuto(on);var b=$('mAuto');b.setAttribute('aria-pressed',on?'true':'false');$('mAutoState').textContent=on?'ON':'OFF';app.classList.toggle('autom',!!on);$('mAutoInd').hidden=!on;mLabels();if(on&&DQ&&level===5)mAutoTalk()}
+function mLabels(){var l=AUTOLBL[MAN.stage()]||'AUTO';$('mAutoLbl').textContent=l;$('mAutoIndT').textContent=l+' ON'}
+function toggleMAuto(){if(paused||level!==5||app.dataset.hud!=='1'||L5==='done'||L5==='intro')return;SFX.unlock();SFX.blip();var on=!MAN.auto();mAuto(on);shout(on?(AUTOLBL[MAN.stage()]||'AUTO')+' ON':(AUTOLBL[MAN.stage()]||'AUTO')+' OFF',0.9)}
+function mManual(){if(MAN.auto()){mAuto(false);shout((AUTOLBL[MAN.stage()]||'AUTO')+' OFF',0.9)}}
+function mAutoTalk(){if(!MAN.auto())return;setTimeout(function(){if(DQ&&level===5&&MAN.auto()&&!paused){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;SFX.blip();nextLine();mAutoTalk()}else if(DQ&&level===5&&MAN.auto())mAutoTalk()},1700)}
+function mtalk(lines,done){talk(lines,done);mAutoTalk()}
+function l5Reset(){SFX.unlock();$('intro').hidden=true;started=true;DQ=null;$('dialog').hidden=true;cards();setL4('');setMode('');app.classList.remove('boosting');$('record').hidden=true;dh={};dctl(false);fctl(false);setSelf(false);SFX.engine(0);themeOn()}
+function showIntro5(){l5Reset();setLevel(5);setL5('intro');S=fresh();S.phase='intro5';hud(false);mctl(false);MAN.start('fly');$('intro5').hidden=false}
+/* stage: 'fly' (fresh run) or the current stage again (pause -> RESTART keeps the score from the start of that stage) */
+function startL5(stage,restart){l5Reset();setLevel(5);stage=stage||'fly';if(restart&&MAN.snap())MAN.start(stage,2);else MAN.start(stage);S=fresh();S.phase='mansion';hud(true);mStage(stage)}
+function mStage(stage){setL5(stage);mLabels();mctl(false);ART.portrait($('mface'),'richie','calm');dh={};
+ mtalk(MLINES[stage],function(){MAN.go();mctl(true);shout(stage==='fly'?'FLY!':stage==='chute'?'STEER!':'SNEAK IN!',1.2)})}
+MAN.on('stage',function(st){if(level!==5)return;mStage(st)});
+MAN.on('ring',function(r){if(r.hit&&r.perf)shout('PERFECT!',0.6);else if(!r.hit)shout('MISSED THE RING',0.7)});
+MAN.on('boost',function(){shout('BOOST!',0.6)});
+MAN.on('jumpReady',function(){shout('JUMP!',2)});
+MAN.on('jump',function(){mctl(false);shout('GERONIMO!',1.2)});
+MAN.on('gust',function(w){if(Math.abs(w)>30)shout('WIND GUST!',0.8)});
+MAN.on('spotted',function(){shout('SPOTTED! -150',0.9)});
+MAN.on('landed',function(l){mctl(false);shout(l.result==='perfect'?'PERFECT LANDING!':l.result==='ok'?'ON TARGET!':l.result==='close'?'CLOSE ENOUGH!':'MISSED! TRY AGAIN',1.5)});
+MAN.on('retry',function(){if(level===5){mctl(true);shout('FROM THE TOP!',1.2)}});
+MAN.on('detected',function(){shout('DETECTED!',1.2)});
+MAN.on('lost',function(){shout('THEY LOST YOU',1)});
+MAN.on('ko',function(k){shout(k.silent?'SILENT TAKEDOWN!':'K.O.!',0.9)});
+MAN.on('clear',function(){shout('ALL CLEAR! TO THE DOOR \u2192',1.8)});
+MAN.on('empty',function(){shout('NO AMMO! FIND A BOX',1)});
+MAN.on('ammo',function(){shout('AMMO!',0.6)});
+MAN.on('ammodrop',function(){shout('AMMO DROP!',0.9)});
+MAN.on('down',function(){shout('OOF! BACK TO COVER',1.3)});
+MAN.on('door',function(st){if(level!==5)return;mctl(false);S.l5=st;setTimeout(function(){if(level===5&&L5==='stealth')mtalk(MLINES.door,function(){showDone5(S.l5)})},1200)});
+function showDone5(st){setL5('done');S.phase='done5';S.shoutT=0;$('shout').classList.remove('on');hud(false);mctl(false);mAuto(false);SFX.fanfare();
+ var b=store.get(),best=Math.max(b.l5best||0,st.score);store.set({l5done:true,l5best:best});
+ var land={perfect:'PERFECT',ok:'ON TARGET',close:'CLOSE ENOUGH'}[st.land]||'\u2014';
+ $('stats5').innerHTML='Rings: <b>'+st.rings+'/'+st.ringsN+'</b> \u00B7 Landing: <b>'+land+'</b><br>Guards down: <b>'+st.kos+'</b> ('+st.silent+' silent) \u00B7 detected: <b>'+st.detected+'</b><br>Score: <b>'+st.score+'</b> \u00B7 time '+st.time.toFixed(1)+'s'+(st.retries?' \u00B7 retries: '+st.retries:'')+'<br><small>Your best: '+best+'</small>';
+ $('done5').hidden=false;var cc=$('done5').querySelector('.cardin');if(cc){cc.classList.remove('burst');void cc.offsetWidth;cc.classList.add('burst')}}
+function mHud(){var m=MAN.snap();if(!m)return;
+ setTxt('mScore',('000000'+m.score).slice(-6));
+ if(m.fly){var f=m.fly;setTxt('mAlt',String(f.alt));setTxt('mRings',f.hit+'/'+f.n);setW('mBoostFill',f.meter);var j=f.over&&!f.jumped;if(dh.jmp!==j){dh.jmp=j;$('mBoost').textContent=j?'JUMP!':'BOOST';$('mBoost').classList.toggle('jump',j);$('mBoost').setAttribute('aria-label',j?'Jump out of the plane':'Boost')}
+  var rdy=j||f.meter>=MAN.FLY.cost&&f.boost<=0;if(dh.mrdy!==rdy){dh.mrdy=rdy;$('mBoost').classList.toggle('off',!rdy)}}
+ if(m.chute){var c=m.chute,w=c.wind,kt=Math.round(Math.abs(w)/3);setTxt('mHeight',String(c.ft));setTxt('mWindV',w<-1?'\u25C0 '+kt:w>1?kt+' \u25B6':'0');setL('mTgtMark',Math.max(0,Math.min(1,0.5+c.dx/300)));
+  var on=Math.abs(c.dx)<c.ok;if(dh.ton!==on){dh.ton=on;$('mTgtMark').classList.toggle('on',on)}}
+ if(m.stealth){var s=m.stealth;setW('mHpi',Math.max(0,s.p.hp)/100);setTxt('mLives','\u00D7'+s.lives);setTxt('mAmmo',String(s.ammo));setTxt('mGuards',String(s.up));setW('mDetFill',s.meter);
+  var dc=s.alert?'alert':s.meter>0.5?'warn':s.p.hidden?'hid':'';if(dh.dc!==dc){dh.dc=dc;$('mDet').className='mbox st-only mdet '+dc}setTxt('mDetLbl',s.alert?'DETECTED!':s.p.hidden?'HIDDEN':'STEALTH');
+  var cr=s.p.crouch;if(dh.cr!==cr){dh.cr=cr;$('mSneak').classList.toggle('on',cr);$('mSneak').setAttribute('aria-pressed',cr?'true':'false')}
+  var lo=s.ammo===0;if(dh.lo!==lo){dh.lo=lo;$('mShoot').classList.toggle('off',lo)}}}
+/* level 5 input: joystick (fly + stealth), hold buttons (chute), keys */
+var mstickId=null,mstickV={x:0,y:0},mkeys={},mhold={};
+function mstickReset(){mstickId=null;mstickV={x:0,y:0};var k=$('mknob');if(k)k.style.transform=''}
+function mApply(){var kx=(mkeys.r?1:0)-(mkeys.l?1:0),ky=(mkeys.d?1:0)-(mkeys.u?1:0),hx=(mhold.r?1:0)-(mhold.l?1:0),x=mstickV.x||kx||hx,y=mstickV.y||ky||(mhold.f?-1:0);
+ if(Math.abs(x)>0.3||Math.abs(y)>0.3)mManual();if(!MAN.auto())MAN.move(x,y)}
+function mstickAt(e){var st=$('mstick'),r=st.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2,dx=(e.clientX-cx)/R,dy=(e.clientY-cy)/R,m=Math.hypot(dx,dy);
+ if(m>1){dx/=m;dy/=m}mstickV={x:Math.abs(dx)<0.2?0:dx,y:Math.abs(dy)<0.2?0:dy};$('mknob').style.transform='translate('+(dx*R*0.55)+'px,'+(dy*R*0.55)+'px)';mApply()}
+function mpress(k){if(paused||level!==5||app.dataset.mctl!=='1')return;SFX.unlock();var st=MAN.stage(),jump=st==='fly'&&MAN.snap().fly.over;if(!jump)mManual();MAN.press(k)}
 function fightHud(){var f=FIGHT.snap();if(!f)return;
  var rg=f.rage/f.rageMax;setW('fragei',rg);var full=rg>=1;if(dh.rfull!==full){dh.rfull=full;$('frage').classList.toggle('full',full);$('fSpec').classList.toggle('ready',full)}
  setW('fhpi',Math.max(0,f.player.hp)/100);var low=f.player.hp<=30;if(dh.low!==low){dh.low=low;$('fhp').classList.toggle('low',low)}
@@ -352,6 +424,7 @@ function confetti(n){var C=['#ff3ad8','#29d6ff','#ffd23a','#ffffff'];for(var i=0
 function update(dt){
  clock+=dt;typeTick(dt);
  if(S.shoutT>0){S.shoutT-=dt;if(S.shoutT<=0)$('shout').classList.remove('on')}
+ if(level===5){MAN.update(dt);mHud();return}
  if(level===4){PLANE.update(dt);return}
  if(level===3){FIGHT.update(dt);fightHud();return}
  if(level===1){DRIVE.update(dt);driveHud();var d=dsnap;SFX.engine(S.phase==='drive'&&d.st!=='done'?Math.max(0.05,d.kmh/200):0,d.boost>0);return}
@@ -396,6 +469,7 @@ function update(dt){
 var flickT=0;
 function render(){
  if(!bg)return;var b=buf.getContext('2d');
+ if(level===5){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);MAN.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
  if(level===4){b.setTransform(1,0,0,1,0,0);b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);PLANE.render(b,W,clock);blit();return}
  if(level===3){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);FIGHT.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
  if(level===1){b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);DRIVE.render(b,W,clock,T&&T.isPlaying()?T.level():0);blit();return}
@@ -434,7 +508,7 @@ $('startL2').addEventListener('click',function(){begin(2)});
 $('next2').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('again1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 $('toL1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
-function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'&&S.phase!=='intro4'&&S.phase!=='done4'}
+function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'&&S.phase!=='intro4'&&S.phase!=='done4'&&S.phase!=='intro5'&&S.phase!=='done5'}
 function dsteer(dir){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();if(DRIVE.self()){setSelf(false);shout('SELF DRIVE OFF',0.9)}if(DRIVE.steer(dir))SFX.blip()}
 function setSelf(on){DRIVE.setSelf(on);var b=$('selfBtn');b.setAttribute('aria-pressed',on?'true':'false');$('selfState').textContent=on?'ON':'OFF';app.classList.toggle('selfdrive',!!on);$('selfInd').hidden=!on}
 function toggleSelf(){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();SFX.blip();var on=!DRIVE.self();setSelf(on);shout(on?'SELF DRIVE ON':'SELF DRIVE OFF',0.9)}
@@ -453,7 +527,7 @@ act.addEventListener('contextmenu',function(e){e.preventDefault()});
 $('dialog').addEventListener('click',tapDialog);
 $('pauseBtn').addEventListener('click',function(){if(canPause())setPaused(true)});
 $('resume').addEventListener('click',function(){setPaused(false)});
-$('restart').addEventListener('click',function(){setPaused(false);DQ=null;$('dialog').hidden=true;if(L4==='fight')startFight4();else if(L4)startChase();else if(level===1)startDrive();else if(level===3)startFight();else startLevel()});
+$('restart').addEventListener('click',function(){setPaused(false);DQ=null;$('dialog').hidden=true;if(level===5&&L5&&L5!=='intro'&&L5!=='done')startL5(MAN.stage(),true);else if(L4==='fight')startFight4();else if(L4)startChase();else if(level===1)startDrive();else if(level===3)startFight();else startLevel()});
 $('music').addEventListener('click',function(){musicOn=!musicOn;musicUI()});
 $('again').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('next3').addEventListener('click',function(){started=true;showIntro3()});
@@ -462,6 +536,10 @@ $('again3').addEventListener('click',function(){startFight()});
 $('next4').addEventListener('click',function(){showIntro4()});
 $('start4').addEventListener('click',function(){startChase()});
 $('again4').addEventListener('click',function(){startChase()});
+$('next5').addEventListener('click',function(){showIntro5()});
+$('start5').addEventListener('click',function(){startL5('fly')});
+$('again5').addEventListener('click',function(){startL5('fly')});
+$('toL1d').addEventListener('click',function(){SFX.unlock();themeOn();startDrive()});
 $('toL1c').addEventListener('click',function(){SFX.unlock();themeOn();startDrive()});
 $('toL1b').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 [['fAtk','atk'],['fKick','kick'],['fJump','jump'],['fSpec','special']].forEach(function(b){var el=$(b[0]);
@@ -473,7 +551,27 @@ stk.addEventListener('pointerdown',function(e){if(paused||level!==3||app.dataset
 stk.addEventListener('pointermove',function(e){if(e.pointerId!==stickId)return;e.preventDefault();stickAt(e)});
 ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){stk.addEventListener(ev,function(e){if(e.pointerId!==stickId)return;stickReset();applyMove()})});
 stk.addEventListener('contextmenu',function(e){e.preventDefault()});
+/* level 5 controls */
+[['mBoost',function(){mpress(MAN.stage()==='fly'&&MAN.snap().fly.over?'jump':'boost')}],['mShoot',function(){mpress('shoot')}],['mSneak',function(){mpress('sneak')}]].forEach(function(b){var el=$(b[0]);
+ el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('hit');setTimeout(function(){el.classList.remove('hit')},90);b[1]()});
+ el.addEventListener('click',function(e){e.preventDefault()});el.addEventListener('contextmenu',function(e){e.preventDefault()})});
+[['mL','l'],['mR','r'],['mFlare','f']].forEach(function(b){var el=$(b[0]);
+ el.addEventListener('pointerdown',function(e){if(paused||level!==5||app.dataset.mctl!=='1')return;e.preventDefault();SFX.unlock();try{el.setPointerCapture(e.pointerId)}catch(x){}mhold[b[1]]=true;el.classList.add('hit');mApply()});
+ ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){el.addEventListener(ev,function(){if(!mhold[b[1]])return;mhold[b[1]]=false;el.classList.remove('hit');mApply()})});
+ el.addEventListener('click',function(e){e.preventDefault()});el.addEventListener('contextmenu',function(e){e.preventDefault()})});
+$('mAuto').addEventListener('pointerdown',function(e){e.preventDefault();toggleMAuto()});$('mAuto').addEventListener('click',function(e){e.preventDefault()});
+var mstk=$('mstick');
+mstk.addEventListener('pointerdown',function(e){if(paused||level!==5||app.dataset.mctl!=='1')return;e.preventDefault();mstickId=e.pointerId;try{mstk.setPointerCapture(e.pointerId)}catch(x){}SFX.unlock();mstickAt(e)});
+mstk.addEventListener('pointermove',function(e){if(e.pointerId!==mstickId)return;e.preventDefault();mstickAt(e)});
+['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){mstk.addEventListener(ev,function(e){if(e.pointerId!==mstickId)return;mstickReset();mApply()})});
+mstk.addEventListener('contextmenu',function(e){e.preventDefault()});
 var KMAP={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowUp:'u',w:'u',W:'u',ArrowDown:'d',s:'d',S:'d'};
+document.addEventListener('keydown',function(e){if(level!==5||app.dataset.mctl!=='1'||paused||DQ)return;
+ if(KMAP[e.key]){e.preventDefault();mkeys[KMAP[e.key]]=true;mApply();return}
+ if(e.repeat)return;var k=e.key.toLowerCase(),st=MAN.stage();
+ if(k===' '||k==='j'||k==='z'||k==='enter'){e.preventDefault();e.stopImmediatePropagation();mpress(st==='stealth'?'shoot':st==='fly'&&MAN.snap().fly.over?'jump':'boost')}
+ else if(k==='c'||k==='k'||k==='x'||k==='shift'){e.preventDefault();mpress('sneak')}},true);
+document.addEventListener('keyup',function(e){if(KMAP[e.key]&&level===5){mkeys[KMAP[e.key]]=false;mApply()}});
 document.addEventListener('keydown',function(e){if(level!==3||app.dataset.fctl!=='1'||paused||DQ)return;
  if(KMAP[e.key]){e.preventDefault();keys[KMAP[e.key]]=true;applyMove();return}
  if(e.repeat)return;var k=e.key.toLowerCase();
@@ -492,22 +590,23 @@ document.addEventListener('visibilitychange',function(){if(document.hidden&&canP
 document.addEventListener('gesturestart',function(e){e.preventDefault()});
 window.addEventListener('resize',resize);window.addEventListener('orientationchange',function(){setTimeout(resize,150)});
 if(!T||!T.supported){musicOn=false}
-musicUI();hud(false);ctl(false);dctl(false);fctl(false);setLevel(1);resize();if(store.get().l1done)$('startL2').classList.add('unlocked');
+musicUI();hud(false);ctl(false);dctl(false);fctl(false);mctl(false);setLevel(1);resize();if(store.get().l1done)$('startL2').classList.add('unlocked');
 ART.loadSprites(SPRITES,function(){bgW=0;resize();if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 DRIVE.loadSprites(DSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 FIGHT.loadSprites(FSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);var duo=L4==='fight';FIGHT.portrait($('bface'),duo?'manny':'jefe');if(duo)FIGHT.portrait($('bface2'),'aces')});
 PLANE.loadSprites(PSPRITES);
+MAN.loadSprites(MSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 /* the menu's LEVEL 3 box opens game/?start=alley -> straight to the Level 3 intro card (the only entry param) */
-/* ...and the LEVEL 4 box opens game/?start=airfield -> the Level 4 intro card */
-try{var q=new URLSearchParams(location.search).get('start');if(q==='alley'){started=true;showIntro3()}else if(q==='airfield'){showIntro4()}}catch(e){}
+/* ...the LEVEL 4 box opens game/?start=airfield -> the Level 4 intro card, and the LEVEL 5 box opens game/?start=mansion -> the Level 5 intro card */
+try{var q=new URLSearchParams(location.search).get('start');if(q==='alley'){started=true;showIntro3()}else if(q==='airfield'){showIntro4()}else if(q==='mansion'){showIntro5()}}catch(e){}
 requestAnimationFrame(function(ts){last=ts;loop(ts)});
 
 /* test/debug hook (read-only snapshot, no network) */
 window.__rosado={version:VERSION,REPS:REPS,BAG:BAG,IDLE:IDLE,IDLE_MULT:IDLE_MULT,
- snap:function(){var L=bagLevel();return {level:level,l4:L4,plane:PLANE.snap(),drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
+ snap:function(){var L=bagLevel();return {level:level,l4:L4,l5:L5,mansion:MAN.snap(),plane:PLANE.snap(),drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
   timeLeft:S.timeLeft,marker:markerPos(S.m),dir:(S.m%2)<1?1:-1,zone:[BAG.center[L]-BAG.zone[L],BAG.center[L]+BAG.zone[L]],speed:BAG.speed[L],cd:S.cd,paused:paused,dialog:!!DQ,line:DQ?DQ.full:'',
   musicOn:musicOn,music:!!(T&&T.isPlaying()),cut:(function(){var v=$('cutv');return {on:CUT.on,state:CUT.state,how:CUT.how,fallback:CUT.fallback,visible:!$('cut').hidden,t:v.currentTime,paused:v.paused,src:v.getAttribute('src')||'',tap:!$('cutTap').hidden}})(),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
  loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightBox:function(i){var f=FIGHT.snap();if(!f)return null;var e=i<0?f.player:f.enemies[i];if(!e)return null;var m=FIGHT.META[e.frame],hw=m?Math.max(m[2],m[0]-m[2])/2:e.h*0.3,r=$('view').getBoundingClientRect(),X=function(x){return r.left+ox+(x-f.cam)*scale},Y=function(y){return r.top+oy+y*scale};
   return {l:X(e.x-hw),r:X(e.x+hw),t:Y(e.y-(e.z||0)-e.h),b:Y(e.y-(e.z||0)),feet:Y(e.y),scale:scale,h:e.h}},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,
- dev:DRIVE.dev,CFG:DRIVE.CFG,pdev:PLANE.dev,planeSpriteMode:function(){return PLANE.spriteMode()}};
+ dev:DRIVE.dev,CFG:DRIVE.CFG,pdev:PLANE.dev,mdev:MAN.dev,showDone4:function(){cards();showDone4()},mansionSpriteMode:function(){return MAN.spriteMode()},planeSpriteMode:function(){return PLANE.spriteMode()}};
 })();
