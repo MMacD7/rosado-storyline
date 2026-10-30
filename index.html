@@ -61,6 +61,7 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
 .box.s{--c:#ff2bd6;--g:rgba(255,43,214,.8);--g2:rgba(255,43,214,.35)}
 .box.l1{--c:#19d3ff;--g:rgba(25,211,255,.8);--g2:rgba(25,211,255,.3)}
 .box.l2{--c:#ffb02e;--g:rgba(255,176,46,.8);--g2:rgba(255,176,46,.3)}
+.box.l3{--c:#c9a6ff;--g:rgba(181,147,217,.85);--g2:rgba(181,147,217,.32)}
 .box .th{flex:none;width:66px;height:66px;border-radius:12px;overflow:hidden;border:2px solid var(--c);box-shadow:0 0 10px var(--g)}
 .box .th img{display:block;width:100%;height:100%;object-fit:cover}
 .box .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left}
@@ -72,6 +73,7 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
 @media (max-width:699px) and (orientation:portrait){
  h1 .a{font-size:clamp(40px,11.5vw,80px)}
  .stage{gap:8px}
+ .poster{height:clamp(150px,24dvh,380px)}
 }
 @keyframes sign{0%,17%,21%,70%,72%,100%{opacity:1}19%,71%{opacity:.6}}
 @keyframes glow{0%,100%{opacity:1}50%{opacity:.82}}
@@ -89,13 +91,14 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
 @media (max-height:560px) and (orientation:landscape){
  main{padding-top:calc(6px + env(safe-area-inset-top));padding-bottom:calc(8px + env(safe-area-inset-bottom))}
  .back,.mute{min-height:44px}
- .stage{flex-direction:row;gap:22px;padding-top:4px}
+ .top{position:absolute;z-index:3;top:calc(6px + env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));width:auto}
+ .stage{flex-direction:row;gap:22px;padding-top:0}
  .poster{height:min(72dvh,280px)}
- h1{margin:0}h1 .a{font-size:38px}h1 .b{font-size:18px;margin-top:2px}
+ h1{margin:0}h1 .a{font-size:34px}h1 .b{font-size:16px;margin-top:1px}
  .info{gap:4px;flex:0 1 430px}.hint{font-size:12px;min-height:1.1em}
- .boxes{gap:8px;margin-top:2px}
- .box{min-height:62px;padding:6px 12px 6px 6px;gap:10px;border-radius:14px}
- .box .th{width:48px;height:48px;border-radius:9px}.box .t{font-size:18px}.box .k{font-size:10px}.box .d{font-size:11.5px}.box .ar{font-size:20px}
+ .boxes{gap:6px;margin-top:2px}
+ .box{min-height:52px;padding:4px 12px 4px 5px;gap:10px;border-radius:14px}
+ .box .th{width:42px;height:42px;border-radius:9px}.box .t{font-size:18px}.box .k{font-size:10px}.box .d{font-size:11.5px}.box .ar{font-size:20px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
@@ -129,7 +132,11 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
     </a>
     <a class="box l2" id="box-l2" href="game/">
      <span class="th"><img src="thumb-gym.webp" alt="" width="66" height="66"></span>
-     <span class="tx"><span class="k">LEVEL 2</span><span class="t">Reps for Jesus</span><span class="d">Hit the gym · then into The Alley</span></span><span class="ar" aria-hidden="true">›</span>
+     <span class="tx"><span class="k">LEVEL 2</span><span class="t">Reps for Jesus</span><span class="d">Hit the gym</span></span><span class="ar" aria-hidden="true">›</span>
+    </a>
+    <a class="box l3" id="box-l3" href="game/?start=alley">
+     <span class="th"><img src="thumb-alley.webp" alt="" width="66" height="66"></span>
+     <span class="tx"><span class="k">LEVEL 3</span><span class="t">The Alley</span><span class="d">El Jefe’s Linen Wall</span></span><span class="ar" aria-hidden="true">›</span>
     </a>
    </nav>
   </div>
