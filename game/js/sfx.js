@@ -1,11 +1,12 @@
-/* Rosado Nights sound effects (v0.3.0)
+/* Rosado Nights sound effects (v0.3.1)
    Original WebAudio SFX, generated live. Own AudioContext so the effects keep working
    when the theme music is switched off (RosadoTheme.pause() suspends the music context).
    API: RosadoSFX.unlock() (call inside a tap), .clank(), .strain(level), .thump(power), .whiff(),
         .sting(), .blip(), .combo(n), .rack(), .fanfare(), .tick(), .setPaused(bool)
    Level 1 (drive): .engine(level,boost) (continuous electric hum, 0 = off), .crash(v), .bump(), .puff(), .boost(), .chime(), .pickup(), .squelch(), .warn(), .clunk()
    Level 2 story (v0.2.1): .clang() (off-screen metal bin crash in the alley), .clangs() (call count, for tests)
-   Level 3 fight (v0.3.0): .punch(v), .thud(), .spin(), .block(), .ko(), .whistle(), .fight(on) (music loop), .fightOn() */
+   Level 3 fight (v0.3.0): .punch(v), .thud(), .spin(), .block(), .ko(), .whistle(), .fight(on) (music loop), .fightOn()
+   v0.3.1: .kwhoosh(), .rage(), .rageHit(v), .fightMode('street'|'boss'), .fightBpm() (new STREET RAGE loop, 160/172 BPM) */
 (function(){
 "use strict";
 var ctx=null,out=null,nb=null,paused=false;
@@ -141,24 +142,64 @@ function block(){if(!ok())return;var t=now(),o=osc('square',520,t,0.08),g=G(0);e
 function ko(){if(!ok())return;punch(1.4);var t=now()+0.05,o=osc('square',660,t,0.6),g=G(0);o.frequency.exponentialRampToValueAtTime(110,t+0.5);env(g,t,0.005,0.08,0.5);chain(o,F('lowpass',2400),g,out)}
 /* El Jefe's whistle: two rising sine chirps */
 function whistle(){if(!ok())return;var t=now();[[0,1900,2600],[0.28,2000,3000]].forEach(function(w){var o=osc('sine',w[1],t+w[0],0.24),g=G(0);o.frequency.setValueAtTime(w[1],t+w[0]);o.frequency.exponentialRampToValueAtTime(w[2],t+w[0]+0.18);env(g,t+w[0],0.02,0.16,0.2);chain(o,g,out)})}
-/* fight loop: original driving synthwave, 118 BPM, C# minor (C#m - A - B - G#m), kick/snare/hats, octave bass, saw hook.
-   Scheduled ahead on this context's clock, so it freezes with setPaused(true). fight(true/false), fightOn(). */
-var FT={on:false,step:0,next:0,timer:null,bus:null},BPM=118,SIX=60/BPM/4;
-var PROG=[[37,[61,64,68]],[33,[61,64,69]],[35,[63,66,71]],[32,[63,68,71]]];
-var HOOK=[68,0,68,71,0,68,66,0, 64,0,64,66,0,64,61,0, 66,0,66,68,0,66,63,0, 68,0,71,0,73,0,71,68];
-function fstep(t,i){var bar=Math.floor(i/16)%4,s=i%16,ch=PROG[bar],b=FT.bus,mf=function(m){return 440*Math.pow(2,(m-69)/12)};
- if(s%4===0){var k=osc('sine',150,t,0.3),kg=G(0);k.frequency.setValueAtTime(150,t);k.frequency.exponentialRampToValueAtTime(42,t+0.12);env(kg,t,0.002,0.9,0.2);chain(k,kg,b)}
- if(s===4||s===12){var n=noise(t,0.2),ng=G(0);env(ng,t,0.001,0.42,0.16);chain(n,F('bandpass',1800,0.7),ng,b);var so=osc('triangle',190,t,0.12),sg=G(0);env(sg,t,0.001,0.3,0.1);chain(so,sg,b)}
- if(s%2===1){var h=noise(t,0.05),hg=G(0);env(hg,t,0.001,s%4===3?0.13:0.07,0.03);chain(h,F('highpass',7000),hg,b)}
- var bm=ch[0]+(s%2?12:0),bo=osc('sawtooth',mf(bm),t,SIX*0.95),bg=G(0),bl=F('lowpass',520+(s%4)*90,4);env(bg,t,0.004,0.17,SIX*0.85);chain(bo,bl,bg,b);
- if(s===0||s===6||s===10){ch[1].forEach(function(m){[-9,9].forEach(function(d){var o=osc('sawtooth',mf(m),t,SIX*3),g=G(0);o.detune.value=d;env(g,t,0.004,0.035,SIX*2.6);chain(o,F('lowpass',2200),g,b)})})}
- var phr=Math.floor(i/64)%2;if(phr===1){var hm=HOOK[(i%64)/2|0];if(i%2===0&&hm){[0,7].forEach(function(d,j){var o=osc(j?'square':'sawtooth',mf(hm+12)*(j?1.003:1),t,SIX*1.8),g=G(0);env(g,t,0.006,j?0.03:0.06,SIX*1.6);chain(o,F('lowpass',3200),g,b)})}}}
-function fsched(){if(!FT.on||!ctx)return;if(!paused){var ahead=ctx.currentTime+0.25;if(FT.next<ctx.currentTime)FT.next=ctx.currentTime+0.05;while(FT.next<ahead){fstep(FT.next,FT.step);FT.step++;FT.next+=SIX}}FT.timer=setTimeout(fsched,90)}
+/* v0.3.1 kicks + RICHIE RAGE */
+function kwhoosh(){if(!ok())return;var t=now(),n=noise(t,0.24),bp=F('bandpass',700,1.1),g=G(0);bp.frequency.setValueAtTime(420,t);bp.frequency.exponentialRampToValueAtTime(1600,t+0.16);env(g,t,0.015,0.38,0.18);chain(n,bp,g,out)}
+function rage(){if(!ok())return;var t=now();
+ /* rising scream sweep + sub drop + distorted power chord */
+ var n=noise(t,0.5),bp=F('bandpass',300,2),g=G(0);bp.frequency.setValueAtTime(300,t);bp.frequency.exponentialRampToValueAtTime(5000,t+0.35);env(g,t,0.05,0.5,0.4);chain(n,bp,g,out);
+ var o=osc('sine',120,t,0.9),og=G(0);o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(30,t+0.8);env(og,t,0.005,1.0,0.8);chain(o,og,out);
+ var ws=ctx.createWaveShaper();ws.curve=dcurve(9);var lp=F('lowpass',3800),cg=G(0);env(cg,t,0.004,0.22,0.9);chain(ws,lp,cg,out);
+ [40,47,52].forEach(function(m){[-12,12].forEach(function(d){var q=osc('sawtooth',440*Math.pow(2,(m-69)/12),t,1.0);q.detune.value=d;q.connect(ws)})})}
+function rageHit(v){if(!ok())return;v=v||1;punch(1.3*v);var t=now(),o=osc('sine',70,t,0.5),g=G(0);o.frequency.exponentialRampToValueAtTime(28,t+0.4);env(g,t,0.002,0.9*Math.min(1.2,v),0.42);chain(o,g,out);
+ var n=noise(t,0.6),ng=G(0);env(ng,t,0.002,0.35*v,0.55);chain(n,F('highpass',2500),ng,out)}
+function dcurve(k){var n=1024,c=new Float32Array(n),d=Math.tanh(k);for(var i=0;i<n;i++){var x=i/(n-1)*2-1;c[i]=Math.tanh(k*x)/d}return c}
+/* fight loop v0.3.1 "STREET RAGE": original composition, metal-edged synthwave. E minor, Em - C - D - B, 160 BPM.
+   Double-time drums (kick on every 8th, snare on 2 & 4, snare rolls), distorted palm-muted 16th bass chug + power-chord gallop,
+   16th square arpeggios, heavy distorted lead on the B phrase. BOSS variation: up a whole step to F# minor, 172 BPM, 16th double-kick,
+   32nd hat rolls, crash every 2 bars, lead + octave-down double + harmony layer all the time. Mode changes land on the next bar.
+   Scheduled ahead on this context's clock, so it freezes with setPaused(true). fight(on), fightOn(), fightMode('street'|'boss'). */
+var FT={on:false,step:0,next:0,timer:null,bus:null,drv:null,mode:'street',want:'street',bpm:160};
+var PROG=[[40,[64,67,71]],[36,[64,67,72]],[38,[62,66,69]],[35,[63,66,71]]];
+var LEAD=[76,79,83,79,81,79,78,76, 79,0,76,79,84,83,79,76, 78,0,74,78,81,79,78,74, 75,78,83,78,87,86,83,0];
+var HARM=[71,76,79,76,78,76,74,71, 76,0,72,76,79,79,76,72, 74,0,69,74,78,76,74,69, 71,75,78,75,83,81,78,0];
+var GALLOP=[1,0,0,1,0,0,1,0,0,0,1,0,1,0,1,1];
+function six(){return 60/FT.bpm/4}
+function mf(m){return 440*Math.pow(2,(m-69)/12)}
+function fkick(t,b,v){var k=osc('sine',160,t,0.28),kg=G(0);k.frequency.setValueAtTime(170,t);k.frequency.exponentialRampToValueAtTime(40,t+0.1);env(kg,t,0.001,0.95*v,0.18);chain(k,kg,b);
+ var c=noise(t,0.02),cg=G(0);env(cg,t,0.001,0.35*v,0.012);chain(c,F('highpass',3000),cg,b)}
+function fsnare(t,b,v){var n=noise(t,0.22),ng=G(0);env(ng,t,0.001,0.55*v,0.15);chain(n,F('bandpass',2100,0.6),ng,b);var so=osc('triangle',210,t,0.12),sg=G(0);so.frequency.exponentialRampToValueAtTime(150,t+0.08);env(sg,t,0.001,0.4*v,0.09);chain(so,sg,b)}
+function fhat(t,b,v){var h=noise(t,0.04),hg=G(0);env(hg,t,0.001,v,0.025);chain(h,F('highpass',8000),hg,b)}
+function fstep(t,i){
+ if(i%16===0&&FT.want!==FT.mode){FT.mode=FT.want;FT.bpm=FT.mode==='boss'?172:160}
+ var boss=FT.mode==='boss',tr=boss?2:0,bar=Math.floor(i/16)%4,s=i%16,ch=PROG[bar],b=FT.bus,d=FT.drv,S=six(),phB=boss||Math.floor(i/64)%2===1;
+ /* drums */
+ var dbl=boss&&bar>=2;
+ if(s===4||s===12)fsnare(t,b,1);else if(dbl||s%2===0)fkick(t,b,s%4===0?1:0.75);
+ if(bar===3&&s>=13)fsnare(t,b,0.55+0.15*(s-13));
+ if(boss&&bar===1&&s===15)fsnare(t,b,0.5);
+ fhat(t,b,s%2===0?0.09:0.05);if(boss&&s%2===1)fhat(t+S/2,b,0.04);
+ if(i%(boss?32:64)===0){var cr=noise(t,1.2),crg=G(0);env(crg,t,0.002,0.28,1.1);chain(cr,F('highpass',5000),crg,b)}
+ /* distorted bass chug (palm-muted 16ths, accents ring longer) */
+ var root=ch[0]+tr,acc=GALLOP[s],bo=osc('sawtooth',mf(root),t,S*(acc?1.6:0.6)),bo2=osc('square',mf(root-12),t,S*(acc?1.6:0.6)),bg=G(0);bo.detune.value=-8;
+ env(bg,t,0.002,acc?0.34:0.2,acc?S*1.4:S*0.45);bo.connect(bg);bo2.connect(bg);chain(bg,F('lowpass',acc?1500:700,2),d);
+ /* power chord gallop on accents (root, fifth, octave) */
+ if(acc){[0,7,12].forEach(function(iv,j){var o=osc('sawtooth',mf(root+12+iv),t,S*1.5),g=G(0);o.detune.value=j*5-5;env(g,t,0.002,0.09,S*1.3);chain(o,g,d)})}
+ /* 16th arpeggio (clean, cuts through) */
+ var arp=ch[1],an=arp[[0,1,2,1][s%4]]+tr+12+(s>=8?12:0),ao=osc('square',mf(an),t,S*0.9),ag=G(0);env(ag,t,0.002,boss?0.05:0.04,S*0.75);chain(ao,F('lowpass',boss?4200:3200),ag,b);
+ /* heavy lead (8th notes, ties when 0) */
+ if(phB&&s%2===0){var li=((i%64)/2)|0,lm=LEAD[li];if(lm){var dur=S*(LEAD[li+1]===0?3.6:1.8);
+   [[0,'sawtooth',0.075,0],[7,'square',0.03,0]].forEach(function(L){var o=osc(L[1],mf(lm+tr+L[3])*(L[0]?1.004:1),t,dur),g=G(0);env(g,t,0.004,L[2],dur*0.9);chain(o,g,d)});
+   if(boss){var o2=osc('sawtooth',mf(lm+tr-12),t,dur),g2=G(0);env(g2,t,0.004,0.05,dur*0.9);chain(o2,g2,d);
+    var hm=HARM[li];if(hm){var o3=osc('square',mf(hm+tr),t,dur),g3=G(0);env(g3,t,0.004,0.03,dur*0.9);chain(o3,F('lowpass',3600),g3,b)}}}}
+}
+function fsched(){if(!FT.on||!ctx)return;if(!paused){var ahead=ctx.currentTime+0.25;if(FT.next<ctx.currentTime)FT.next=ctx.currentTime+0.05;while(FT.next<ahead){fstep(FT.next,FT.step);FT.step++;FT.next+=six()}}FT.timer=setTimeout(fsched,80)}
 function fight(on){on=!!on;if(on===FT.on)return;FT.on=on;
- if(on){if(!ctx)return;if(!FT.bus){FT.bus=G(0.55);FT.bus.connect(out)}FT.bus.gain.setTargetAtTime(0.55,ctx.currentTime,0.05);FT.step=0;FT.next=ctx.currentTime+0.08;fsched()}
+ if(on){if(!ctx){FT.on=false;return}if(!FT.bus){FT.bus=G(0.6);FT.bus.connect(out);var ws=ctx.createWaveShaper();ws.curve=dcurve(6);ws.oversample='2x';var cab=F('lowpass',4200),dg=G(0.5);chain(ws,cab,dg,FT.bus);FT.drv=ws}
+  FT.bus.gain.setTargetAtTime(0.6,ctx.currentTime,0.05);FT.step=0;FT.mode=FT.want;FT.bpm=FT.mode==='boss'?172:160;FT.next=ctx.currentTime+0.08;fsched()}
  else{clearTimeout(FT.timer);if(FT.bus&&ctx)FT.bus.gain.setTargetAtTime(0,ctx.currentTime,0.05)}}
+function fightMode(m){if(m==='boss'||m==='street')FT.want=m;return FT.mode}
 function setPaused(p){paused=!!p;if(!ctx)return;if(paused)ctx.suspend();else ctx.resume()}
 window.RosadoSFX={unlock:unlock,clank:clank,strain:strain,thump:thump,whiff:whiff,sting:sting,blip:blip,tick:tick,combo:combo,rack:rack,fanfare:fanfare,setPaused:setPaused,
  engine:engine,crash:crash,bump:bump,puff:puff,boost:boost,chime:chime,pickup:pickup,squelch:squelch,warn:warn,clunk:clunk,clang:clang,clangs:function(){return nClang},
- punch:punch,thud:thud,spin:spin,block:block,ko:ko,whistle:whistle,fight:fight,fightOn:function(){return FT.on&&!paused&&!!ctx&&ctx.state==='running'}};
+ punch:punch,thud:thud,spin:spin,block:block,ko:ko,whistle:whistle,kwhoosh:kwhoosh,rage:rage,rageHit:rageHit,fightMode:fightMode,fightBpm:function(){return FT.bpm},fight:fight,fightOn:function(){return FT.on&&!paused&&!!ctx&&ctx.state==='running'}};
 })();

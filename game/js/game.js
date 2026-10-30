@@ -1,4 +1,4 @@
-/* Rosado Nights · v0.3.0
+/* Rosado Nights · v0.3.1
    Level 3 "The Alley" (js/fight.js): side-scrolling street brawl vs El Jefe Esteban Lavanda; only reachable from the Level 2 complete card.
    Level 1 "Causeway Chase": drive Richie across the rainy neon bridge to Shred Zeppelin (js/drive.js).
    Level 2 "Reps for Jesus" (the gym):
@@ -7,7 +7,7 @@
    No network, no tracking. localStorage only keeps level-1-done + best combo / best bag time. */
 (function(){
 "use strict";
-var VERSION='0.3.0';
+var VERSION='0.3.1';
 var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight;
 var $=function(id){return document.getElementById(id)};
 var app=$('app'),cv=$('scene'),g=cv.getContext('2d'),buf=document.createElement('canvas'),bg=null,bgW=0;
@@ -15,7 +15,7 @@ var LH=ART.H;
 /* Optional art: put images in game/assets/ and list them here to replace the canvas art (slot boxes are documented in art.js).
    Leave a slot out (or let the file fail to load) and the built-in canvas art is used. Example:
    var SPRITES={'bg':'assets/gym-bg.webp?v=0.1.0','apollo-spot':'assets/apollo-spot.webp?v=0.1.0','richie-bench-down':'assets/richie-bench-down.webp?v=0.1.0'}; */
-var AV='?v=0.3.0',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
+var AV='?v=0.3.1',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
  'richie-idle':'assets/richie-idle.webp'+AV,'apollo-cross':'assets/apollo-cross.webp'+AV,
  'richie-portrait':'assets/richie-portrait.webp'+AV,'apollo-portrait':'assets/apollo-portrait.webp'+AV};
 /* multi-frame sprites (v0.2.1): bench press 0-2, Apollo spot/cheer, boxing guard/guard-low/jab/cross, walk cycle */
@@ -58,7 +58,7 @@ function resize(){
 function setMode(m){app.dataset.mode=m||''}
 function hud(on){app.dataset.hud=on?'1':'0'}
 function ctl(on){app.dataset.ctl=on?'1':'0'}
-function shout(txt,dur){var el=$('shout');if(S.shout===txt&&S.shoutT>0){S.shoutT=dur||1.2;return}S.shout=txt;S.shoutT=dur||1.2;el.textContent=txt;el.classList.add('on')}
+function shout(txt,dur){var el=$('shout');if(S.shout===txt&&S.shoutT>0){S.shoutT=dur||1.2;return}S.shout=txt;S.shoutT=dur||1.2;if(txt!=='RAGE!')el.classList.remove('rage');el.textContent=txt;el.classList.add('on')}
 function bump(id){var el=$(id);if(!el)return;el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump')}
 function pop(txt,cls){var el=$('pop');el.className='';void el.offsetWidth;el.textContent=txt;el.className=cls+' go'}
 function updHud(){
@@ -167,6 +167,7 @@ function startFight(){SFX.unlock();themeOff();$('intro').hidden=true;started=tru
 function autoTalk(){if(!FIGHT.auto())return;setTimeout(function(){if(DQ&&level===3&&FIGHT.auto()&&!paused){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;SFX.blip();nextLine();autoTalk()}else if(DQ&&level===3&&FIGHT.auto())autoTalk()},1700)}
 function ftalk(lines,done){talk(lines,done);autoTalk()}
 FIGHT.on('wave',function(n){shout('WAVE '+n+'!',1.2)});
+var rageTO=null;FIGHT.on('rage',function(){shout('RAGE!',1);var el=$('shout');el.classList.remove('rage');void el.offsetWidth;el.classList.add('rage');clearTimeout(rageTO);rageTO=setTimeout(function(){el.classList.remove('rage')},1000)});
 FIGHT.on('clear',function(n){shout(n<FIGHT.WAVES.length?'CLEAR! GO \u2192':'CLEAR! GO \u2192',1.2)});
 FIGHT.on('boss',function(){fctl(false);$('bossbar').hidden=false;ftalk(FLINES.boss,function(){FIGHT.hold(false);fctl(true);shout('BOSS FIGHT!',1.3)})});
 FIGHT.on('whistle',function(){shout('FWEET! BOYS, GET HIM!',1.6)});
@@ -182,6 +183,8 @@ function showDone3(st){S.phase='done3';S.shoutT=0;$('shout').classList.remove('o
  $('stats3').innerHTML='Score: <b>'+st.score+'</b> \u00B7 Bodyguards down: <b>'+st.kos+'</b><br>Time: <b>'+st.time.toFixed(1)+'s</b> \u00B7 Lives left: <b>'+st.lives+'</b>'+(st.stats.retries?' \u00B7 retries: '+st.stats.retries:'')+'<br><small>Your best: '+best+'</small>';
  $('done3').hidden=false;var c=$('done3').querySelector('.cardin');if(c){c.classList.remove('burst');void c.offsetWidth;c.classList.add('burst')}}
 function fightHud(){var f=FIGHT.snap();if(!f)return;
+ var rg=f.rage/f.rageMax;setW('fragei',rg);var full=rg>=1;if(dh.rfull!==full){dh.rfull=full;$('frage').classList.toggle('full',full);$('fSpec').classList.toggle('ready',full)}
+ if(SFX.fightMode)SFX.fightMode(f.boss?'boss':'street');
  setW('fhpi',Math.max(0,f.player.hp)/100);var low=f.player.hp<=30;if(dh.low!==low){dh.low=low;$('fhp').classList.toggle('low',low)}
  setTxt('lives','\u00D7'+f.lives);setTxt('score',('000000'+f.score).slice(-6));
  var wt=f.boss?(f.boss.hp>0?'BOSS':''):f.wave>0?'WAVE '+Math.min(f.wave,f.waves)+'/'+f.waves:'';setTxt('wtag',wt);
@@ -380,7 +383,7 @@ $('next3').addEventListener('click',function(){started=true;showIntro3()});
 $('start3').addEventListener('click',function(){startFight()});
 $('again3').addEventListener('click',function(){startFight()});
 $('toL1b').addEventListener('click',function(){SFX.unlock();SFX.fight(false);if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
-[['fAtk','atk'],['fJump','jump'],['fSpec','special']].forEach(function(b){var el=$(b[0]);
+[['fAtk','atk'],['fKick','kick'],['fJump','jump'],['fSpec','special']].forEach(function(b){var el=$(b[0]);
  el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('hit');setTimeout(function(){el.classList.remove('hit')},90);fpress(b[1])});
  el.addEventListener('click',function(e){e.preventDefault()});el.addEventListener('contextmenu',function(e){e.preventDefault()})});
 $('autoBtn').addEventListener('pointerdown',function(e){e.preventDefault();toggleAuto()});$('autoBtn').addEventListener('click',function(e){e.preventDefault()});
@@ -393,7 +396,7 @@ var KMAP={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowUp:'u',w:'u'
 document.addEventListener('keydown',function(e){if(level!==3||app.dataset.fctl!=='1'||paused||DQ)return;
  if(KMAP[e.key]){e.preventDefault();keys[KMAP[e.key]]=true;applyMove();return}
  if(e.repeat)return;var k=e.key.toLowerCase();
- if(k==='j'||k==='z'||k===' '||k==='enter'){e.preventDefault();e.stopImmediatePropagation();fpress('atk')}else if(k==='k'||k==='x'){e.preventDefault();fpress('jump')}else if(k==='l'||k==='c'||k==='shift'){e.preventDefault();fpress('special')}},true);
+ if(k==='j'||k==='z'||k===' '||k==='enter'){e.preventDefault();e.stopImmediatePropagation();fpress('atk')}else if(k==='k'||k==='x'){e.preventDefault();fpress('jump')}else if(k==='i'||k==='v'){e.preventDefault();fpress('kick')}else if(k==='l'||k==='c'||k==='shift'){e.preventDefault();fpress('special')}},true);
 document.addEventListener('keyup',function(e){if(KMAP[e.key]){keys[KMAP[e.key]]=false;if(level===3)applyMove()}});
 document.addEventListener('keydown',function(e){
  if(e.repeat)return;
@@ -411,7 +414,10 @@ if(!T||!T.supported){musicOn=false}
 musicUI();hud(false);ctl(false);dctl(false);fctl(false);setLevel(1);resize();if(store.get().l1done)$('startL2').classList.add('unlocked');
 ART.loadSprites(SPRITES,function(){bgW=0;resize();if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 DRIVE.loadSprites(DSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
-FIGHT.loadSprites(FSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);FIGHT.portrait($('bface'))});requestAnimationFrame(function(ts){last=ts;loop(ts)});
+FIGHT.loadSprites(FSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);FIGHT.portrait($('bface'))});
+/* the menu's LEVEL 3 box opens game/?start=alley -> straight to the Level 3 intro card (the only entry param) */
+try{if(new URLSearchParams(location.search).get('start')==='alley'){started=true;showIntro3()}}catch(e){}
+requestAnimationFrame(function(ts){last=ts;loop(ts)});
 
 /* test/debug hook (read-only snapshot, no network) */
 window.__rosado={version:VERSION,REPS:REPS,BAG:BAG,IDLE:IDLE,IDLE_MULT:IDLE_MULT,
