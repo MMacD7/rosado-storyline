@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="Rosado Nights: the storyline, Level 1 Causeway Chase, Level 2 Reps for Jesus, Level 3 The Alley and Level 4 The Airfield, with the neon synthwave theme.">
+<meta name="description" content="Rosado Nights: the storyline, Level 1 Causeway Chase, Level 2 Reps for Jesus, Level 3 The Alley, Level 4 The Airfield and Level 5 Escobar’s Mansion, with the neon synthwave theme.">
 <title>Rosado Nights</title>
 <style>
 *{box-sizing:border-box}
@@ -63,6 +63,7 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
 .box.l2{--c:#ffb02e;--g:rgba(255,176,46,.8);--g2:rgba(255,176,46,.3)}
 .box.l3{--c:#c9a6ff;--g:rgba(181,147,217,.85);--g2:rgba(181,147,217,.32)}
 .box.l4{--c:#ffe14a;--g:rgba(255,225,74,.8);--g2:rgba(255,225,74,.3)}
+.box.l5{--c:#ff7a6a;--g:rgba(255,122,106,.8);--g2:rgba(255,122,106,.3)}
 .box .th{flex:none;width:66px;height:66px;border-radius:12px;overflow:hidden;border:2px solid var(--c);box-shadow:0 0 10px var(--g)}
 .box .th img{display:block;width:100%;height:100%;object-fit:cover}
 .box .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left}
@@ -75,7 +76,7 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
  h1 .a{font-size:clamp(40px,11.5vw,80px)}
  .stage{gap:8px}
  .poster{height:clamp(150px,24dvh,380px)}
- .boxes{gap:9px}.box{min-height:76px;padding:6px 14px 6px 8px}.box .th{width:58px;height:58px}
+ .boxes{gap:7px}.box{min-height:62px;padding:4px 12px 4px 6px;gap:12px;border-radius:15px}.box .th{width:50px;height:50px;border-radius:10px}.box .t{font-size:20px}.box .d{font-size:12px}.box .k{font-size:11px}.box .ar{font-size:22px}
 }
 @keyframes sign{0%,17%,21%,70%,72%,100%{opacity:1}19%,71%{opacity:.6}}
 @keyframes glow{0%,100%{opacity:1}50%{opacity:.82}}
@@ -87,8 +88,8 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
 }
 @media (min-width:700px) and (orientation:portrait){
  .poster{height:clamp(240px,30dvh,420px)}
- .boxes{width:min(520px,100%);gap:12px}
- .box{min-height:90px}.box .th{width:72px;height:72px}.box .t{font-size:26px}.box .d{font-size:15px}
+ .boxes{width:min(520px,100%);gap:10px}
+ .box{min-height:78px}.box .th{width:62px;height:62px}.box .t{font-size:25px}.box .d{font-size:14px}
 }
 @media (max-height:560px) and (orientation:landscape){
  main{padding-top:calc(6px + env(safe-area-inset-top));padding-bottom:calc(8px + env(safe-area-inset-bottom))}
@@ -98,10 +99,12 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
  .poster{height:min(72dvh,280px)}
  h1{margin:0}h1 .a{font-size:34px}h1 .b{font-size:16px;margin-top:1px}
  .info{gap:4px;flex:0 1 500px}.hint{font-size:12px;min-height:1.1em}
- .boxes{gap:6px;margin-top:2px;display:grid;grid-template-columns:1fr 1fr;width:min(500px,100%)}.box.s{grid-column:1/-1}.box:not(.s) .t{font-size:16px}.box:not(.s) .d{font-size:10.5px}.box:not(.s) .ar{display:none}
+ .boxes{gap:6px;margin-top:2px;display:grid;grid-template-columns:1fr 1fr;width:min(500px,100%)}.box .t{font-size:16px}.box .d{font-size:10.5px}.box .ar{display:none}
  .box{min-height:46px;padding:3px 12px 3px 5px;gap:10px;border-radius:14px}
- .box .th{width:38px;height:38px;border-radius:9px}.box .t{font-size:18px}.box .k{font-size:10px}.box .d{font-size:11.5px}.box .ar{font-size:20px}
+ .box .th{width:38px;height:38px;border-radius:9px}.box .k{font-size:10px}
 }
+/* v0.5.0: six boxes on big landscape screens (iPad) */
+@media (min-width:700px) and (orientation:landscape) and (min-height:561px) and (max-height:900px){.boxes{gap:9px}.box{min-height:74px;padding:6px 14px 6px 8px}.box .th{width:60px;height:60px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -143,6 +146,10 @@ h1 .b{display:block;margin-top:4px;font-size:clamp(20px,5.6vw,38px);letter-spaci
     <a class="box l4" id="box-l4" href="game/?start=airfield">
      <span class="th"><img src="thumb-airfield.webp" alt="" width="66" height="66"></span>
      <span class="tx"><span class="k">LEVEL 4</span><span class="t">The Airfield</span><span class="d">Tail the supercar · Take the plane</span></span><span class="ar" aria-hidden="true">›</span>
+    </a>
+    <a class="box l5" id="box-l5" href="game/?start=mansion">
+     <span class="th"><img src="thumb-mansion.webp" alt="" width="66" height="66"></span>
+     <span class="tx"><span class="k">LEVEL 5</span><span class="t">Escobar’s Mansion</span><span class="d">Fly in · Parachute · Sneak past the guards</span></span><span class="ar" aria-hidden="true">›</span>
     </a>
    </nav>
   </div>
