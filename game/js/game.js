@@ -1,4 +1,8 @@
-/* Rosado Nights · v0.5.0
+/* Rosado Nights · v0.6.0
+   Level 6 "Escobar" (v0.6.0, js/escobar.js), the FINAL level: Mike's showdown video -> title slams -> Phase 1 the grand staircase brawl
+   (TANK at the foot of the stairs, guard waves, chandeliers, pickups, the aquarium flood with cartoon sharks) -> the wall climb -> Phase 2 the rooftop
+   duel under the helicopter spotlight -> Phase 3 the jet-ski chase across the bay, the deck brawl, the seaplane -> sunrise ending card.
+   Reached from the Level 5 complete card (CONTINUE TO LEVEL 6) or game/?start=escobar.
    Level 5 "Escobar's Mansion" (v0.5.0, js/mansion.js): fly through neon rings -> parachute onto the lawn target -> sneak past the guards to the front door.
    Reached from the Level 4 complete card (CONTINUE TO LEVEL 5) or game/?start=mansion.
    Level 4 "The Airfield" (v0.4.0): chase (drive.js chase mode) -> airfield fight (fight.js 'airfield' stage, Big Manny + Aces) -> plane ending (js/plane.js).
@@ -6,20 +10,20 @@
    Level 3 "The Alley" (js/fight.js): side-scrolling street brawl vs El Jefe Esteban Lavanda; only reachable from the Level 2 complete card.
    Level 1 "Causeway Chase": drive Richie across the rainy neon bridge to Shred Zeppelin (js/drive.js).
    Level 2 "Reps for Jesus" (the gym):
-   Phase 1: bench press 400 lbs × 3 (tap PUSH fast; each rep needs more taps and the bar sinks faster).
+   Phase 1: bench press 400 lbs × 3 (tap PUSH fast; each rep needs more taps; v0.6.0: rep 3 is as fair as rep 2 on touch).
    Phase 2: heavy bag timing (tap PUNCH while the marker is in the pink zone; 12 good hits before time runs out).
    No network, no tracking. localStorage only keeps level-1-done + best combo / best bag time. */
 (function(){
 "use strict";
-var VERSION='0.5.0';
-var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight,PLANE=window.RosadoPlane,MAN=window.RosadoMansion;
+var VERSION='0.6.0';
+var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight,PLANE=window.RosadoPlane,MAN=window.RosadoMansion,ESC=window.RosadoEscobar;
 var $=function(id){return document.getElementById(id)};
 var app=$('app'),cv=$('scene'),g=cv.getContext('2d'),buf=document.createElement('canvas'),bg=null,bgW=0;
 var LH=ART.H;
 /* Optional art: put images in game/assets/ and list them here to replace the canvas art (slot boxes are documented in art.js).
    Leave a slot out (or let the file fail to load) and the built-in canvas art is used. Example:
    var SPRITES={'bg':'assets/gym-bg.webp?v=0.1.0','apollo-spot':'assets/apollo-spot.webp?v=0.1.0','richie-bench-down':'assets/richie-bench-down.webp?v=0.1.0'}; */
-var AV='?v=0.5.0',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
+var AV='?v=0.6.0',SPRITES={bg:'assets/gym-bg.webp'+AV,bag:'assets/bag.webp'+AV,'bench-empty':'assets/bench-empty.webp'+AV,
  'richie-idle':'assets/richie-idle.webp'+AV,'apollo-cross':'assets/apollo-cross.webp'+AV,
  'richie-portrait':'assets/richie-portrait.webp'+AV,'apollo-portrait':'assets/apollo-portrait.webp'+AV};
 /* multi-frame sprites (v0.2.1): bench press 0-2, Apollo spot/cheer, boxing guard/guard-low/jab/cross, walk cycle */
@@ -30,22 +34,28 @@ var DSPRITES={car:'assets/drive-car.webp'+AV,biker:'assets/drive-biker.webp'+AV,
 var PSPRITES={};PLANE.SLOTS.forEach(function(k){PSPRITES[k]='assets/'+k+'.webp'+AV});
 
 var MSPRITES={};MAN.SLOTS.forEach(function(k){MSPRITES[k]='assets/'+k+'.webp'+AV});
+var ESPRITES={};ESC.SLOTS.forEach(function(k){ESPRITES[k]='assets/'+k+'.webp'+AV});
 var FSPRITES={};FIGHT.SLOTS.forEach(function(k){FSPRITES[k]='assets/'+k+'.webp'+AV});
 
 /* ---------- difficulty ---------- */
 /* taps: taps needed with no drain; drain: bar sink per second while tapping; idle: extra sink multiplier after IDLE seconds without a tap */
-var REPS=[{taps:8,drain:0.12},{taps:11,drain:0.20},{taps:14,drain:0.28}],IDLE=0.35,IDLE_MULT=2.5;
+/* v0.6.0 fairness fix: rep 3 used to be {taps:14,drain:0.28} with IDLE 0.35 s / x2.5. The bar only rises while taps/s > taps x drain,
+   so rep 3 needed 3.9 taps/s just to break even (reps 1 and 2: 0.96 and 2.2), and on touch any gap over 0.35 s sank it 2.5x faster:
+   at a steady 4 taps/s rep 3 could not be finished. Now rep 3 breaks even at 2.2 taps/s like rep 2 (still the most taps), and the idle grace is 0.45 s / x2. */
+var REPS=[{taps:8,drain:0.12},{taps:11,drain:0.20},{taps:13,drain:0.17}],IDLE=0.45,IDLE_MULT=2.0;
 var BAG={target:12,time:45,every:3,
  speed:[0.75,0.95,1.2,1.45],   /* marker sweeps per second across the track */
  zone:[0.13,0.115,0.10,0.09],  /* half-width of the pink zone (track = 1) */
  center:[0.5,0.6,0.42,0.55],perfect:0.035,cdGood:0.18,cdMiss:0.45};
 
 /* ---------- state ---------- */
-var S,musicOn=true,paused=false,started=false,last=0,clock=0,level=1,dsnap=null,L4='',L5='';
+var S,musicOn=true,paused=false,started=false,last=0,clock=0,level=1,dsnap=null,L4='',L5='',L6='';
 /* L4: '' outside Level 4, else 'intro' | 'chase' | 'fight' | 'plane' | 'done'. The engine level stays 1 (drive) / 3 (fight) / 4 (plane) so the existing controls are reused */
 function setL4(ph){L4=ph||'';app.dataset.l4=L4}
 /* L5: '' outside Level 5, else 'intro' | 'fly' | 'chute' | 'stealth' | 'done' (engine level 5 = js/mansion.js) */
 function setL5(ph){L5=ph||'';app.dataset.l5=L5}
+/* L6: '' outside Level 6, else 'intro' | 'cut' | 'slam' | 'stairs' | 'climb' | 'roof' | 'bay' | 'deck' | 'finale' | 'done' (engine level 6 = js/escobar.js) */
+function setL6(ph){L6=ph||'';app.dataset.l6=L6}
 function fresh(){return {phase:'intro',rep:0,h:0,hDisp:0,peak:0,lastTap:-9,taps:0,tapsPerRep:[],timer:0,
  hits:0,combo:0,bestCombo:0,misses:0,perfects:0,timeLeft:BAG.time,m:0,cd:0,punchT:-1,bagAng:0,bagVel:0,bagFlash:0,bagSquash:0,
  parts:[],shake:0,shout:'',shoutT:0,apolloExpr:'smile',richieExpr:'calm',apolloArms:'cross',fistT:0,bagStart:0,record:false,lastPunch:-9,punchSide:0,flash:0,exitX:null,walking:false,story:[]}}
@@ -61,7 +71,7 @@ function resize(){
  W=Math.max(ch>cw*0.9?260:300,Math.min(500,Math.round(cw/ch*LH)));
  scale=Math.min(cw/W,ch/LH);ox=(cw-W*scale)/2;oy=(ch-LH*scale)/2;
  cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);
- var bs=level===3||level===5?2:1;if(W!==bgW){bg=ART.makeBg(W);bgW=W}if(buf.width!==W*bs||buf.height!==LH*bs){buf.width=W*bs;buf.height=LH*bs}
+ var bs=level===3||level===5||level===6?2:1;if(W!==bgW){bg=ART.makeBg(W);bgW=W}if(buf.width!==W*bs||buf.height!==LH*bs){buf.width=W*bs;buf.height=LH*bs}
  render();
 }
 
@@ -86,12 +96,12 @@ function talk(lines,done){
 }
 function nextLine(){
  DQ.i++;if(DQ.i>=DQ.lines.length){var d=DQ.done;DQ=null;$('dialog').hidden=true;if(d)d();return}
- var L=DQ.lines[DQ.i],who=$('who');who.textContent=L.who==='richie'?'RICHIE':L.who==='biker'?'BIKER GANG':L.who==='jefe'?'EL JEFE':L.who==='manny'?'BIG MANNY':L.who==='aces'?'ACES':L.who==='guard'?'GUARD':'FLEXECUTIONER';who.className='who '+L.who;
+ var L=DQ.lines[DQ.i],who=$('who');who.textContent=L.who==='richie'?'RICHIE':L.who==='biker'?'BIKER GANG':L.who==='jefe'?'EL JEFE':L.who==='manny'?'BIG MANNY':L.who==='aces'?'ACES':L.who==='guard'?'GUARD':L.who==='esc'?'ESCOBAR':L.who==='chief'?'THE CHIEF':L.who==='tank'?'TANK':'FLEXECUTIONER';who.className='who '+L.who;
  if(L.on)L.on();
  face(L.who,L.expr||'smile');DQ.full=L.text;DQ.typed=0;DQ.shownAt=clock;$('line').textContent='';
  if(L.who==='apollo')S.apolloExpr=L.expr||'smile';
 }
-function face(who,expr){if(who==='biker')DRIVE.portrait($('face'));else if(who==='jefe'||who==='manny'||who==='aces')FIGHT.portrait($('face'),who);else if(who==='guard')MAN.portrait($('face'));else ART.portrait($('face'),who,expr)}
+function face(who,expr){if(who==='biker')DRIVE.portrait($('face'));else if(who==='jefe'||who==='manny'||who==='aces')FIGHT.portrait($('face'),who);else if(who==='guard')MAN.portrait($('face'));else if(who==='esc'||who==='chief'||who==='tank')ESC.portrait($('face'),who);else ART.portrait($('face'),who,expr)}
 function tapDialog(){
  if(!DQ||paused)return;if(clock-DQ.shownAt<0.25)return;
  if(DQ.typed<DQ.full.length){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;return}
@@ -158,10 +168,10 @@ function begin(lv){
  SFX.unlock();if(musicOn&&T&&T.supported)T.play();
  started=true;$('intro').hidden=true;if(lv===2)startLevel();else startDrive();
 }
-function setLevel(lv){var was=level;level=lv;if(lv!==5){setL5('');mctl(false);mAuto(false)}app.dataset.level=String(lv);app.dataset.l4=L4;document.title=lv===5?'Rosado Nights \u00B7 Level 5: Escobar\u2019s Mansion':L4?'Rosado Nights \u00B7 Level 4: The Airfield':lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
- var a=$('scene');a.setAttribute('aria-label',lv===5?'Escobar\u2019s Mansion: Richie flies in, parachutes onto the lawn and sneaks past the guards':L4?'The Airfield: Richie tails the yellow supercar, fights at the hangar and flies off':lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
- if(lv!==3){if(typeof CUT==='object'&&CUT&&CUT.on){CUT.done=true;cutClose()}fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true}if(was!==lv)resize()}
-function cards(){['done','done1','done3','intro3','intro4','done4','intro5','done5'].forEach(function(id){$(id).hidden=true})}
+function setLevel(lv){var was=level;level=lv;if(lv!==5){setL5('');mctl(false);mAuto(false)}if(lv!==6){setL6('');ectl(false);eAuto(false);slamEnd(true)}app.dataset.level=String(lv);app.dataset.l4=L4;document.title=lv===6?'Rosado Nights \u00B7 Level 6: Escobar':lv===5?'Rosado Nights \u00B7 Level 5: Escobar\u2019s Mansion':L4?'Rosado Nights \u00B7 Level 4: The Airfield':lv===1?'Rosado Nights \u00B7 Level 1: Causeway Chase':lv===3?'Rosado Nights \u00B7 Level 3: The Alley':'Rosado Nights \u00B7 Level 2: Reps for Jesus \u00B7 Shred Zeppelin';
+ var a=$('scene');a.setAttribute('aria-label',lv===6?'Escobar: the final showdown. Richie fights up the staircase, duels Escobar on the roof and chases him across the bay':lv===5?'Escobar\u2019s Mansion: Richie flies in, parachutes onto the lawn and sneaks past the guards':L4?'The Airfield: Richie tails the yellow supercar, fights at the hangar and flies off':lv===1?'Causeway Chase: Richie drives to Shred Zeppelin':lv===3?'The Alley: Richie fights El Jefe\u2019s bodyguards':'Shred Zeppelin: Richie and Flexecutioner');
+ if(lv!==3&&lv!==6){if(typeof CUT==='object'&&CUT&&CUT.on){CUT.done=true;cutClose()}}if(lv!==3){fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true}if(was!==lv)resize()}
+function cards(){['done','done1','done3','intro3','intro4','done4','intro5','done5','intro6','done6'].forEach(function(id){$(id).hidden=true})}
 /* ---------- level 1: the drive ---------- */
 function startDrive(){
  setL4('');DRIVE.setMode('causeway');setLevel(1);S=fresh();S.phase='drive';cards();$('record').hidden=true;setMode('');hud(true);dctl(false);DRIVE.intro();setSelf(false);
@@ -233,8 +243,11 @@ FIGHT.on('carSeen',function(){ftalk(FLINES.car,function(){FIGHT.driveOff();SFX.e
 FIGHT.on('finish',function(st){SFX.engine(0);showDone3(st)});
 /* v0.3.2: Mike's Level 3 -> Level 4 cutscene video. It replaces the in-game car ending after El Jefe's KO;
    that in-game ending stays only as the fallback when the video can't load or play. Game music pauses while it plays. */
-var CUT={on:false,src:'assets/cutscene-escobar.mp4'+AV,state:'off',music:false,timer:null,done:false,fallback:false,how:''};
-function playCut(){var v=$('cutv');CUT.on=true;CUT.done=false;CUT.fallback=false;CUT.how='';CUT.state='loading';S.phase='cut';FIGHT.cutscene();fctl(false);hud(false);$('bossbar').hidden=true;$('goArrow').hidden=true;
+var CUT={on:false,src:'assets/cutscene-escobar.mp4'+AV,state:'off',music:false,timer:null,done:false,fallback:false,how:'',kind:'l3'};
+/* v0.6.0: the same player also plays Mike's showdown video (uncut) as the Level 6 intro: kind 'l6' */
+var CUTS={l3:{src:'assets/cutscene-escobar.mp4'+AV,poster:'assets/cutscene-escobar-poster.webp'+AV,label:'Cutscene: Richie finds his car and heads for the airfield'},
+ l6:{src:'assets/cutscene-showdown.mp4'+AV,poster:'assets/cutscene-showdown-poster.webp'+AV,label:'Cutscene: the showdown at Escobar\u2019s mansion'}};
+function playCut(kind){var v=$('cutv');CUT.kind=kind||'l3';var cd=CUTS[CUT.kind];CUT.src=cd.src;v.setAttribute('poster',cd.poster);v.setAttribute('aria-label',cd.label);CUT.on=true;CUT.done=false;CUT.fallback=false;CUT.how='';CUT.state='loading';S.phase='cut';if(CUT.kind==='l3')FIGHT.cutscene();fctl(false);ectl(false);hud(false);$('bossbar').hidden=true;$('goArrow').hidden=true;
  CUT.music=!!(T&&T.isPlaying());if(CUT.music)T.pause();
  $('cut').hidden=false;$('cutTap').hidden=true;app.classList.add('cutting');
  v.onended=function(){endCut('ended')};v.onerror=function(){cutFail('error')};v.onplaying=function(){CUT.state='playing';$('cutTap').hidden=true;clearTimeout(CUT.timer)};
@@ -244,12 +257,12 @@ function cutPlay(){var v=$('cutv'),pr=null;try{pr=v.play()}catch(e){}
  if(pr&&pr.catch)pr.catch(function(err){if(!CUT.on||CUT.done)return;
   if(err&&err.name==='NotAllowedError'){CUT.state='tap';$('cutTap').hidden=false;clearTimeout(CUT.timer);
    /* AUTO FIGHT with nobody tapping: move on to the complete card */
-   if(FIGHT.auto())CUT.timer=setTimeout(function(){if(CUT.on&&CUT.state==='tap')endCut('auto')},8000)}
+   if(CUT.kind==='l3'?FIGHT.auto():ESC.auto())CUT.timer=setTimeout(function(){if(CUT.on&&CUT.state==='tap')endCut('auto')},8000)}
   else if(!err||err.name!=='AbortError')cutFail('play')})}
 function cutClose(){clearTimeout(CUT.timer);CUT.on=false;var v=$('cutv');v.onended=v.onerror=v.onplaying=null;try{v.pause()}catch(e){}v.removeAttribute('src');try{v.load()}catch(e){}
  $('cut').hidden=true;$('cutTap').hidden=true;app.classList.remove('cutting');if(musicOn&&T&&T.supported)T.play()}
-function endCut(how){if(!CUT.on||CUT.done)return;CUT.done=true;CUT.how=how;CUT.state='off';cutClose();showDone3(FIGHT.cutDone())}
-function cutFail(why){if(!CUT.on||CUT.done)return;CUT.done=true;CUT.fallback=true;CUT.how='fallback:'+why;CUT.state='off';cutClose();S.phase='fight';hud(true);FIGHT.ending()}
+function endCut(how){if(!CUT.on||CUT.done)return;CUT.done=true;CUT.how=how;CUT.state='off';cutClose();if(CUT.kind==='l6')afterShowdown();else showDone3(FIGHT.cutDone())}
+function cutFail(why){if(!CUT.on||CUT.done)return;CUT.done=true;CUT.fallback=true;CUT.how='fallback:'+why;CUT.state='off';cutClose();if(CUT.kind==='l6'){afterShowdown();return}S.phase='fight';hud(true);FIGHT.ending()}
 $('cutSkip').addEventListener('click',function(e){e.preventDefault();endCut('skip')});
 $('cutTap').addEventListener('click',function(e){e.preventDefault();CUT.state='loading';$('cutTap').hidden=true;cutPlay()});
 function showDone3(st){S.phase='done3';S.shoutT=0;$('shout').classList.remove('on');hud(false);fctl(false);setAuto(false);$('bossbar').hidden=true;$('goArrow').hidden=true;confetti(60);
@@ -311,6 +324,97 @@ function showDone5(st){setL5('done');S.phase='done5';S.shoutT=0;$('shout').class
  var land={perfect:'PERFECT',ok:'ON TARGET',close:'CLOSE ENOUGH'}[st.land]||'\u2014';
  $('stats5').innerHTML='Rings: <b>'+st.rings+'/'+st.ringsN+'</b> \u00B7 Landing: <b>'+land+'</b><br>Guards down: <b>'+st.kos+'</b> ('+st.silent+' silent) \u00B7 detected: <b>'+st.detected+'</b><br>Score: <b>'+st.score+'</b> \u00B7 time '+st.time.toFixed(1)+'s'+(st.retries?' \u00B7 retries: '+st.retries:'')+'<br><small>Your best: '+best+'</small>';
  $('done5').hidden=false;var cc=$('done5').querySelector('.cardin');if(cc){cc.classList.remove('burst');void cc.offsetWidth;cc.classList.add('burst')}}
+/* ---------- level 6: Escobar (the final level) ---------- */
+var Es=function(t){return {who:'esc',text:t}},Ch=function(t){return {who:'chief',text:t}},Tk=function(t){return {who:'tank',text:t}};
+/* Escobar, the chief (she) and TANK are original characters */
+var ELINES={
+ stairs:[Rc('Joystick to move. ATTACK for a 3-hit combo, KICK, JUMP then KICK in the air. KICK a railing to drop its chandelier. Walk over a glowing item to grab it. RAGE when the bar is full. Or tap AUTO FIGHT.','smile')],
+ escTop:[Es('You made it to the top of my stairs, Rosado. Too bad it ends here.'),Rc('Nice suit. Let\u2019s see if you can aim.','calm')],
+ flood:[Es('My aquarium! My beautiful sharks!'),Ch('Don\u2019t just stand there, boys. Get him!'),Rc('Knee-deep, with sharks. The sharks only bump... let them do the work!','smile')],
+ climb:[Rc('He ran for the roof. Up the wall it is.','calm'),Rc('Hold the joystick UP to climb, \u25C0 \u25B6 to dodge the falling tiles, LUNGE to jump up fast. Or tap AUTO CLIMB.','smile')],
+ roof:[Es('Nobody gets this far. Nobody!'),Ch('Finish him, Escobar. I\u2019ll be in the helicopter.'),Rc('That rotor wash pushes me to the edge. Fill the RAGE bar for the big combo!','calm')],
+ splash:[Rc('Cannonball!','smile'),Ch('Up, up! Get me out of here!')],
+ chiefGone:[Rc('She\u2019s getting away... and Escobar\u2019s running for his speedboat!','strain')],
+ bay:[Rc('Good thing he left the jet ski running.','smile'),Rc('Joystick to steer around the buoys and crates. JUMP over the yacht wakes, JUMP right before a wake for a flip. BOOST to catch up. Or tap AUTO RIDE.','smile')],
+ deck:[Gd('He jumped the yacht! Get him off the boat!'),Rc('Permission to come aboard.','calm')],
+ escDeck:[Es('My house, my pool, my suit! You ruined everything!'),Rc('Last round, Escobar. Let\u2019s finish this.','calm')],
+ chiefPlane:[Ch('So long, Richie! The chief always has a way out.'),Rc('Not if I can help it!','strain')],
+ badge:[Rc('Her gold badge. She\u2019ll want this back.','calm'),Rc('I\u2019ll be waiting.','smile')],
+ lose:[Rc('Oof! Shake it off, Richie. Let\u2019s go again!','smile')]
+};
+var EAUTOLBL={stairs:'AUTO FIGHT',roof:'AUTO FIGHT',deck:'AUTO FIGHT',climb:'AUTO CLIMB',bay:'AUTO RIDE'};
+var ESHOUT={stairs:'FIGHT!',climb:'CLIMB!',roof:'FIGHT!',bay:'RIDE!',deck:'LAST ROUND!'};
+function ectl(on){app.dataset.ectl=on?'1':'0';if(!on){ESC.move(0,0);estickReset();ekeys={}}}
+function eAuto(on){ESC.setAuto(on);var b=$('eAuto');b.setAttribute('aria-pressed',on?'true':'false');$('eAutoState').textContent=on?'ON':'OFF';app.classList.toggle('autoe',!!on);$('eAutoInd').hidden=!on;eLabels();if(on&&DQ&&level===6)eAutoTalk()}
+function eLabels(){var l=EAUTOLBL[ESC.stage()]||'AUTO';$('eAutoLbl').textContent=l;$('eAutoIndT').textContent=l+' ON'}
+function toggleEAuto(){if(paused||level!==6||app.dataset.hud!=='1'||!EAUTOLBL[L6])return;SFX.unlock();SFX.blip();var on=!ESC.auto();eAuto(on);shout((EAUTOLBL[ESC.stage()]||'AUTO')+(on?' ON':' OFF'),0.9)}
+function eManual(){if(ESC.auto()){eAuto(false);shout((EAUTOLBL[ESC.stage()]||'AUTO')+' OFF',0.9)}}
+function eAutoTalk(){if(!ESC.auto())return;setTimeout(function(){if(DQ&&level===6&&ESC.auto()&&!paused){DQ.typed=DQ.full.length;$('line').textContent=DQ.full;SFX.blip();nextLine();eAutoTalk()}else if(DQ&&level===6&&ESC.auto())eAutoTalk()},1700)}
+function etalk(lines,done){talk(lines,done);eAutoTalk()}
+/* freeze-frame title slams: the scene freezes, desaturates, and the name card slams in */
+var SLAM={on:false,q:[],done:null,t:null,shown:[]};
+function slams(list,done){SLAM.on=true;SLAM.q=list.slice();SLAM.done=done;app.classList.add('slamming');slamNext()}
+function slamNext(){clearTimeout(SLAM.t);var c=SLAM.q.shift();if(!c){slamEnd();return}SLAM.shown.push(c[0]);var el=$('slam');el.className='slam '+(c[2]||'');$('slamA').textContent=c[0];$('slamB').textContent=c[1];el.hidden=false;void el.offsetWidth;el.classList.add('in');SFX.thud&&SFX.thud(1.4);SFX.combo&&SFX.combo();
+ SLAM.t=setTimeout(slamNext,ESC.auto()?1300:1700)}
+function slamEnd(silent){clearTimeout(SLAM.t);var was=SLAM.on;SLAM.on=false;$('slam').hidden=true;app.classList.remove('slamming');var d=SLAM.done;SLAM.done=null;if(was&&!silent&&d)d()}
+function l6Reset(){SFX.unlock();$('intro').hidden=true;started=true;DQ=null;$('dialog').hidden=true;cards();setL4('');setMode('');app.classList.remove('boosting');$('record').hidden=true;dh={};dctl(false);fctl(false);mctl(false);setSelf(false);SFX.engine(0);themeOn()}
+function showIntro6(){l6Reset();setLevel(6);setL6('intro');S=fresh();S.phase='intro6';hud(false);ectl(false);ESC.start('stairs');$('intro6').hidden=false}
+/* CONTINUE TO LEVEL 6 / START: Mike's showdown video (uncut, SKIP) -> the title slams -> Phase 1 */
+function startShowdown(){l6Reset();setLevel(6);setL6('cut');S=fresh();hud(false);ectl(false);ESC.start('stairs');eAuto(false);playCut('l6')}
+function afterShowdown(){if(level!==6)return;setL6('slam');S.phase='slam';hud(false);
+ slams([['ESCOBAR','THE KING OF MIAMI','esc'],['THE CHIEF','BOUGHT AND PAID FOR','chief'],['TANK','ESCOBAR\u2019S MUSCLE','tank']],function(){startL6('stairs')})}
+function startL6(stage,restart){l6Reset();setLevel(6);stage=stage||'stairs';if(restart&&ESC.snap())ESC.start(stage,2);else ESC.start(stage);S=fresh();S.phase='escobar';hud(true);eStage(stage)}
+function eStage(stage){setL6(stage);eLabels();ectl(false);ART.portrait($('eface'),'richie','calm');dh={};$('ebossbar').hidden=true;
+ if(stage==='finale'){hud(true);return}
+ etalk(ELINES[stage]||[],function(){ESC.go();ectl(true);shout(ESHOUT[stage]||'GO!',1.2)})}
+ESC.on('stage',function(st){if(level!==6)return;eStage(st)});
+ESC.on('talk',function(k){if(level!==6)return;var lines=ELINES[k];if(!lines){ESC.resume();return}etalk(lines,function(){ESC.resume()})});
+ESC.on('tank',function(){if(level===6)shout('TANK!',1)});
+ESC.on('wave',function(w){if(level===6)shout(w.flood?'HERE THEY COME!':'WAVE '+w.i+'!',1)});
+ESC.on('clear',function(){if(level===6&&ESC.snap().go)shout('GO \u2192',1.2)});
+ESC.on('pickup',function(k){if(level===6)shout({cue:'POOL CUE!',ext:'EXTINGUISHER!',arm:'CHANDELIER ARM!'}[k.k]||'GOT IT!',0.9)});
+ESC.on('weaponGone',function(){if(level===6)shout('WEAPON GONE',0.8)});
+ESC.on('chandelier',function(){if(level===6)shout('LOOK OUT BELOW!',1)});
+ESC.on('crash',function(n){if(level===6&&n>1)shout('CHANDELIER x'+n+'!',1)});
+ESC.on('flood',function(){if(level===6)shout('FLOOD!',1.4)});
+ESC.on('shark',function(){if(level===6)shout('SHARK ASSIST!',0.8)});
+ESC.on('finisher',function(){if(level===6)shout('K.O.!',0.9)});
+ESC.on('rage',function(){if(level===6){$('shout').classList.add('rage');shout('RICHIE RAGE!',1.1)}});
+ESC.on('wash',function(){if(level===6)shout('ROTOR WASH!',1)});
+ESC.on('hang',function(){if(level===6)shout('HANG ON!',1)});
+ESC.on('aim',function(){if(level===6)shout('HE\u2019S AIMING! MOVE!',0.9)});
+ESC.on('launch',function(){if(level===6)shout('OFF THE ROOF!',1.4)});
+ESC.on('splash',function(){if(level===6)shout('SPLASH!',1.2)});
+ESC.on('air',function(f){if(level===6)shout(f?'FLIP!':'BIG AIR!',0.7)});
+ESC.on('boost',function(){if(level===6)shout('BOOST!',0.6)});
+ESC.on('leap',function(){if(level===6){ectl(false);shout('GERONIMO!',1.2)}});
+ESC.on('tile',function(){if(level===6)shout('OUCH!',0.6)});
+ESC.on('escDown',function(st){if(level===6&&st==='deck'){ectl(false);SFX.fanfare();shout('ESCOBAR DOWN!',2)}});
+ESC.on('grab',function(){if(level===6)shout('GRAB THE TAIL!',1.2)});
+ESC.on('drop',function(){if(level===6)shout('SPLASH!',1)});
+ESC.on('down',function(){if(level===6)shout('OOF!',0.9)});
+ESC.on('lose',function(st){if(level!==6)return;ectl(false);etalk(ELINES.lose,function(){startL6(st,true)})});
+ESC.on('end',function(st){if(level!==6)return;S.l6=st;setTimeout(function(){if(level===6&&L6==='finale')showDone6(S.l6)},1400)});
+function showDone6(st){setL6('done');S.phase='done6';S.shoutT=0;$('shout').classList.remove('on');hud(false);ectl(false);eAuto(false);SFX.fanfare();confetti(80);
+ var b=store.get(),best=Math.max(b.l6best||0,st.score);store.set({l6done:true,l6best:best});
+ $('stats6').innerHTML='Score: <b>'+st.score+'</b> \u00B7 knocked out: <b>'+st.kos+'</b> \u00B7 chandeliers: <b>'+st.chand+'</b><br>Shark assists: <b>'+st.sharks+'</b> \u00B7 big air: <b>'+st.airs+'</b> ('+st.flips+' flips) \u00B7 time '+st.time.toFixed(1)+'s'+(st.retries?' \u00B7 retries: '+st.retries:'')+'<br><small>Your best: '+best+'</small>';
+ $('done6').hidden=false;var cc=$('done6').querySelector('.cardin');if(cc){cc.classList.remove('burst');void cc.offsetWidth;cc.classList.add('burst')}}
+var WSHORT={cue:'POOL CUE',ext:'EXTINGUISHER',arm:'CHANDELIER ARM'};
+function eHud(){var m=ESC.snap();if(!m)return;setTxt('eScore',('000000'+m.score).slice(-6));setW('eHpi',m.hp/100);setTxt('eLives','\u00D7'+m.lives);setW('eRagei',m.rage/100);
+ var full=m.rage>=100;if(dh.rfull!==full){dh.rfull=full;$('eRage').classList.toggle('full',full);$('eSpec').classList.toggle('ready',full)}
+ var wk=m.weapon||'';if(dh.wk!==wk||dh.wu!==m.uses){dh.wk=wk;dh.wu=m.uses;$('eWpn').classList.toggle('has',!!wk);setTxt('eWpnN',wk?WSHORT[wk]:'FISTS');setTxt('eWpnU',wk?'\u00D7'+m.uses:'');$('eAtk').textContent=wk?(wk==='ext'?'SPRAY':'SWING'):'ATTACK'}
+ if(m.stage==='stairs'){setTxt('eWaveT',m.flood?'FLOOD!':m.wave<=0?'TANK':'WAVE '+Math.min(m.wave,m.waves-1)+'/'+(m.waves-2))}else if(m.stage==='roof'||m.stage==='deck')setTxt('eWaveT',m.stage==='roof'?'ROOFTOP':'THE DECK');
+ if(m.stage==='climb')setW('eClimb',m.h/m.len);
+ if(m.stage==='bay'){setW('eGap',1-Math.min(1,Math.max(0,(m.gap-40)/340)));setW('eBoostFill',m.meter);setW('eDist',m.d/m.len);var rdy=m.meter>=0.5;if(dh.brdy!==rdy){dh.brdy=rdy;$('eBoost').classList.toggle('off',!rdy)}}
+ var bs=m.boss,tk=m.tank&&m.tank.st!=='ko'?m.tank:null,bb=!!(bs&&bs.st!=='ko'&&bs.st!=='fly'||tk);if(dh.bb!==bb){dh.bb=bb;$('ebossbar').hidden=!bb}
+ if(bb){var who=tk?'tank':'esc';if(dh.bw!==who){dh.bw=who;$('ebname').textContent=tk?'TANK':'ESCOBAR';ESC.portrait($('ebface'),who)}setW('ebhp',tk?Math.max(0,tk.hp)/120:bs.hp/bs.max)}}
+/* level 6 input: joystick + buttons + keys */
+var estickId=null,estickV={x:0,y:0},ekeys={};
+function estickReset(){estickId=null;estickV={x:0,y:0};var k=$('eknob');if(k)k.style.transform=''}
+function eApply(){var kx=(ekeys.r?1:0)-(ekeys.l?1:0),ky=(ekeys.d?1:0)-(ekeys.u?1:0),x=estickV.x||kx,y=estickV.y||ky;if(Math.abs(x)>0.3||Math.abs(y)>0.3)eManual();if(!ESC.auto())ESC.move(x,y)}
+function estickAt(e){var st=$('estick'),r=st.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2,dx=(e.clientX-cx)/R,dy=(e.clientY-cy)/R,m=Math.hypot(dx,dy);
+ if(m>1){dx/=m;dy/=m}estickV={x:Math.abs(dx)<0.2?0:dx,y:Math.abs(dy)<0.2?0:dy};$('eknob').style.transform='translate('+(dx*R*0.55)+'px,'+(dy*R*0.55)+'px)';eApply()}
+function epress(k){if(paused||level!==6||app.dataset.ectl!=='1'||DQ)return;SFX.unlock();eManual();ESC.press(k)}
 function mHud(){var m=MAN.snap();if(!m)return;
  setTxt('mScore',('000000'+m.score).slice(-6));
  if(m.fly){var f=m.fly;setTxt('mAlt',String(f.alt));setTxt('mRings',f.hit+'/'+f.n);setW('mBoostFill',f.meter);var j=f.over&&!f.jumped;if(dh.jmp!==j){dh.jmp=j;$('mBoost').textContent=j?'JUMP!':'BOOST';$('mBoost').classList.toggle('jump',j);$('mBoost').setAttribute('aria-label',j?'Jump out of the plane':'Boost')}
@@ -424,6 +528,7 @@ function confetti(n){var C=['#ff3ad8','#29d6ff','#ffd23a','#ffffff'];for(var i=0
 function update(dt){
  clock+=dt;typeTick(dt);
  if(S.shoutT>0){S.shoutT-=dt;if(S.shoutT<=0)$('shout').classList.remove('on')}
+ if(level===6){if(!SLAM.on)ESC.update(dt);eHud();return}
  if(level===5){MAN.update(dt);mHud();return}
  if(level===4){PLANE.update(dt);return}
  if(level===3){FIGHT.update(dt);fightHud();return}
@@ -469,6 +574,7 @@ function update(dt){
 var flickT=0;
 function render(){
  if(!bg)return;var b=buf.getContext('2d');
+ if(level===6){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);ESC.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
  if(level===5){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);MAN.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
  if(level===4){b.setTransform(1,0,0,1,0,0);b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);PLANE.render(b,W,clock);blit();return}
  if(level===3){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);FIGHT.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
@@ -508,7 +614,7 @@ $('startL2').addEventListener('click',function(){begin(2)});
 $('next2').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('again1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
 $('toL1').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startDrive()});
-function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'&&S.phase!=='intro4'&&S.phase!=='done4'&&S.phase!=='intro5'&&S.phase!=='done5'}
+function canPause(){return started&&S.phase!=='cut'&&S.phase!=='done'&&S.phase!=='done1'&&S.phase!=='done3'&&S.phase!=='intro3'&&S.phase!=='intro4'&&S.phase!=='done4'&&S.phase!=='intro5'&&S.phase!=='done5'&&S.phase!=='intro6'&&S.phase!=='done6'&&S.phase!=='slam'&&!SLAM.on&&!CUT.on}
 function dsteer(dir){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();if(DRIVE.self()){setSelf(false);shout('SELF DRIVE OFF',0.9)}if(DRIVE.steer(dir))SFX.blip()}
 function setSelf(on){DRIVE.setSelf(on);var b=$('selfBtn');b.setAttribute('aria-pressed',on?'true':'false');$('selfState').textContent=on?'ON':'OFF';app.classList.toggle('selfdrive',!!on);$('selfInd').hidden=!on}
 function toggleSelf(){if(paused||level!==1||app.dataset.dctl!=='1')return;SFX.unlock();SFX.blip();var on=!DRIVE.self();setSelf(on);shout(on?'SELF DRIVE ON':'SELF DRIVE OFF',0.9)}
@@ -527,7 +633,7 @@ act.addEventListener('contextmenu',function(e){e.preventDefault()});
 $('dialog').addEventListener('click',tapDialog);
 $('pauseBtn').addEventListener('click',function(){if(canPause())setPaused(true)});
 $('resume').addEventListener('click',function(){setPaused(false)});
-$('restart').addEventListener('click',function(){setPaused(false);DQ=null;$('dialog').hidden=true;if(level===5&&L5&&L5!=='intro'&&L5!=='done')startL5(MAN.stage(),true);else if(L4==='fight')startFight4();else if(L4)startChase();else if(level===1)startDrive();else if(level===3)startFight();else startLevel()});
+$('restart').addEventListener('click',function(){setPaused(false);DQ=null;$('dialog').hidden=true;if(level===6&&(EAUTOLBL[L6]||L6==='finale'))startL6(L6==='finale'?'deck':ESC.stage(),true);else if(level===5&&L5&&L5!=='intro'&&L5!=='done')startL5(MAN.stage(),true);else if(L4==='fight')startFight4();else if(L4)startChase();else if(level===1)startDrive();else if(level===3)startFight();else startLevel()});
 $('music').addEventListener('click',function(){musicOn=!musicOn;musicUI()});
 $('again').addEventListener('click',function(){SFX.unlock();if(musicOn&&T&&T.supported&&!T.isPlaying())T.play();startLevel()});
 $('next3').addEventListener('click',function(){started=true;showIntro3()});
@@ -537,6 +643,11 @@ $('next4').addEventListener('click',function(){showIntro4()});
 $('start4').addEventListener('click',function(){startChase()});
 $('again4').addEventListener('click',function(){startChase()});
 $('next5').addEventListener('click',function(){showIntro5()});
+$('next6').addEventListener('click',function(){startShowdown()});
+$('start6').addEventListener('click',function(){startShowdown()});
+$('again6').addEventListener('click',function(){startL6('stairs')});
+$('toL1e').addEventListener('click',function(){SFX.unlock();themeOn();startDrive()});
+$('slam').addEventListener('pointerdown',function(e){e.preventDefault();if(SLAM.on)slamNext()});
 $('start5').addEventListener('click',function(){startL5('fly')});
 $('again5').addEventListener('click',function(){startL5('fly')});
 $('toL1d').addEventListener('click',function(){SFX.unlock();themeOn();startDrive()});
@@ -559,12 +670,28 @@ stk.addEventListener('contextmenu',function(e){e.preventDefault()});
  el.addEventListener('pointerdown',function(e){if(paused||level!==5||app.dataset.mctl!=='1')return;e.preventDefault();SFX.unlock();try{el.setPointerCapture(e.pointerId)}catch(x){}mhold[b[1]]=true;el.classList.add('hit');mApply()});
  ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){el.addEventListener(ev,function(){if(!mhold[b[1]])return;mhold[b[1]]=false;el.classList.remove('hit');mApply()})});
  el.addEventListener('click',function(e){e.preventDefault()});el.addEventListener('contextmenu',function(e){e.preventDefault()})});
+/* level 6 controls */
+[['eAtk','atk'],['eKick','kick'],['eJump','jump'],['eSpec','rage'],['eLunge','jump'],['eHop','jump'],['eBoost','boost']].forEach(function(b){var el=$(b[0]);
+ el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('hit');setTimeout(function(){el.classList.remove('hit')},90);epress(b[1])});
+ el.addEventListener('click',function(e){e.preventDefault()});el.addEventListener('contextmenu',function(e){e.preventDefault()})});
+$('eAuto').addEventListener('pointerdown',function(e){e.preventDefault();toggleEAuto()});$('eAuto').addEventListener('click',function(e){e.preventDefault()});
+var estk=$('estick');
+estk.addEventListener('pointerdown',function(e){if(paused||level!==6||app.dataset.ectl!=='1')return;e.preventDefault();estickId=e.pointerId;try{estk.setPointerCapture(e.pointerId)}catch(x){}SFX.unlock();estickAt(e)});
+estk.addEventListener('pointermove',function(e){if(e.pointerId!==estickId)return;e.preventDefault();estickAt(e)});
+['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){estk.addEventListener(ev,function(e){if(e.pointerId!==estickId)return;estickReset();eApply()})});
+estk.addEventListener('contextmenu',function(e){e.preventDefault()});
+document.addEventListener('keydown',function(e){if(level!==6||app.dataset.ectl!=='1'||paused||DQ)return;
+ if(KMAP[e.key]){e.preventDefault();ekeys[KMAP[e.key]]=true;eApply();return}
+ if(e.repeat)return;var k=e.key.toLowerCase(),st=ESC.stage();
+ if(k==='j'||k==='z'||k===' '||k==='enter'){e.preventDefault();e.stopImmediatePropagation();epress(st==='bay'||st==='climb'?'jump':'atk')}else if(k==='k'||k==='x'){e.preventDefault();epress('jump')}else if(k==='i'||k==='v'){e.preventDefault();epress(st==='bay'?'boost':'kick')}else if(k==='l'||k==='c'||k==='shift'){e.preventDefault();epress(st==='bay'?'boost':'rage')}},true);
+document.addEventListener('keyup',function(e){if(KMAP[e.key]&&level===6){ekeys[KMAP[e.key]]=false;eApply()}});
 $('mAuto').addEventListener('pointerdown',function(e){e.preventDefault();toggleMAuto()});$('mAuto').addEventListener('click',function(e){e.preventDefault()});
 var mstk=$('mstick');
 mstk.addEventListener('pointerdown',function(e){if(paused||level!==5||app.dataset.mctl!=='1')return;e.preventDefault();mstickId=e.pointerId;try{mstk.setPointerCapture(e.pointerId)}catch(x){}SFX.unlock();mstickAt(e)});
 mstk.addEventListener('pointermove',function(e){if(e.pointerId!==mstickId)return;e.preventDefault();mstickAt(e)});
 ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){mstk.addEventListener(ev,function(e){if(e.pointerId!==mstickId)return;mstickReset();mApply()})});
 mstk.addEventListener('contextmenu',function(e){e.preventDefault()});
+/* KMAP is shared by levels 5 and 6 */
 var KMAP={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowUp:'u',w:'u',W:'u',ArrowDown:'d',s:'d',S:'d'};
 document.addEventListener('keydown',function(e){if(level!==5||app.dataset.mctl!=='1'||paused||DQ)return;
  if(KMAP[e.key]){e.preventDefault();mkeys[KMAP[e.key]]=true;mApply();return}
@@ -584,29 +711,31 @@ document.addEventListener('keydown',function(e){
   if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){e.preventDefault();dsteer(1);return}
   if(e.key===' '||e.key==='ArrowUp'||e.key==='w'||e.key==='Enter'){e.preventDefault();dboost();return}}
  if(e.key===' '||e.key==='Enter'){if(app.dataset.ctl==='1'&&!paused){e.preventDefault();action()}else if(DQ&&!paused){e.preventDefault();tapDialog()}}
- else if(e.key==='Escape'||e.key==='p'){if(CUT.on)endCut('skip');else if(canPause())setPaused(!paused)}
+ else if(e.key==='Escape'||e.key==='p'){if(CUT.on)endCut('skip');else if(SLAM.on)slamNext();else if(canPause())setPaused(!paused)}
 });
 document.addEventListener('visibilitychange',function(){if(document.hidden&&canPause())setPaused(true)});
 document.addEventListener('gesturestart',function(e){e.preventDefault()});
 window.addEventListener('resize',resize);window.addEventListener('orientationchange',function(){setTimeout(resize,150)});
 if(!T||!T.supported){musicOn=false}
-musicUI();hud(false);ctl(false);dctl(false);fctl(false);mctl(false);setLevel(1);resize();if(store.get().l1done)$('startL2').classList.add('unlocked');
+musicUI();hud(false);ctl(false);dctl(false);fctl(false);mctl(false);ectl(false);setLevel(1);resize();if(store.get().l1done)$('startL2').classList.add('unlocked');
 ART.loadSprites(SPRITES,function(){bgW=0;resize();if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 DRIVE.loadSprites(DSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
 FIGHT.loadSprites(FSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);var duo=L4==='fight';FIGHT.portrait($('bface'),duo?'manny':'jefe');if(duo)FIGHT.portrait($('bface2'),'aces')});
 PLANE.loadSprites(PSPRITES);
 MAN.loadSprites(MSPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr)});
+ESC.loadSprites(ESPRITES,function(){if(DQ)face(DQ.lines[DQ.i].who,DQ.lines[DQ.i].expr);dh={}});
 /* the menu's LEVEL 3 box opens game/?start=alley -> straight to the Level 3 intro card (the only entry param) */
-/* ...the LEVEL 4 box opens game/?start=airfield -> the Level 4 intro card, and the LEVEL 5 box opens game/?start=mansion -> the Level 5 intro card */
-try{var q=new URLSearchParams(location.search).get('start');if(q==='alley'){started=true;showIntro3()}else if(q==='airfield'){showIntro4()}else if(q==='mansion'){showIntro5()}}catch(e){}
+/* ...the LEVEL 4 box opens game/?start=airfield -> the Level 4 intro card, the LEVEL 5 box opens game/?start=mansion -> the Level 5 intro card,
+   and the LEVEL 6 box opens game/?start=escobar -> the Level 6 intro card (its START is the tap that lets the showdown video play with sound) */
+try{var q=new URLSearchParams(location.search).get('start');if(q==='alley'){started=true;showIntro3()}else if(q==='airfield'){showIntro4()}else if(q==='mansion'){showIntro5()}else if(q==='escobar'){showIntro6()}}catch(e){}
 requestAnimationFrame(function(ts){last=ts;loop(ts)});
 
 /* test/debug hook (read-only snapshot, no network) */
 window.__rosado={version:VERSION,REPS:REPS,BAG:BAG,IDLE:IDLE,IDLE_MULT:IDLE_MULT,
- snap:function(){var L=bagLevel();return {level:level,l4:L4,l5:L5,mansion:MAN.snap(),plane:PLANE.snap(),drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
+ snap:function(){var L=bagLevel();return {level:level,l4:L4,l5:L5,l6:L6,escobar:ESC.snap(),slam:{on:SLAM.on,text:SLAM.on?$('slamA').textContent:'',shown:SLAM.shown.slice()},mansion:MAN.snap(),plane:PLANE.snap(),drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
   timeLeft:S.timeLeft,marker:markerPos(S.m),dir:(S.m%2)<1?1:-1,zone:[BAG.center[L]-BAG.zone[L],BAG.center[L]+BAG.zone[L]],speed:BAG.speed[L],cd:S.cd,paused:paused,dialog:!!DQ,line:DQ?DQ.full:'',
-  musicOn:musicOn,music:!!(T&&T.isPlaying()),cut:(function(){var v=$('cutv');return {on:CUT.on,state:CUT.state,how:CUT.how,fallback:CUT.fallback,visible:!$('cut').hidden,t:v.currentTime,paused:v.paused,src:v.getAttribute('src')||'',tap:!$('cutTap').hidden}})(),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
+  musicOn:musicOn,music:!!(T&&T.isPlaying()),cut:(function(){var v=$('cutv');return {on:CUT.on,kind:CUT.kind,state:CUT.state,how:CUT.how,fallback:CUT.fallback,visible:!$('cut').hidden,t:v.currentTime,paused:v.paused,src:v.getAttribute('src')||'',tap:!$('cutTap').hidden}})(),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
  loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightBox:function(i){var f=FIGHT.snap();if(!f)return null;var e=i<0?f.player:f.enemies[i];if(!e)return null;var m=FIGHT.META[e.frame],hw=m?Math.max(m[2],m[0]-m[2])/2:e.h*0.3,r=$('view').getBoundingClientRect(),X=function(x){return r.left+ox+(x-f.cam)*scale},Y=function(y){return r.top+oy+y*scale};
   return {l:X(e.x-hw),r:X(e.x+hw),t:Y(e.y-(e.z||0)-e.h),b:Y(e.y-(e.z||0)),feet:Y(e.y),scale:scale,h:e.h}},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,
- dev:DRIVE.dev,CFG:DRIVE.CFG,pdev:PLANE.dev,mdev:MAN.dev,showDone4:function(){cards();showDone4()},mansionSpriteMode:function(){return MAN.spriteMode()},planeSpriteMode:function(){return PLANE.spriteMode()}};
+ dev:DRIVE.dev,CFG:DRIVE.CFG,pdev:PLANE.dev,mdev:MAN.dev,showDone4:function(){cards();showDone4()},mansionSpriteMode:function(){return MAN.spriteMode()},edev:ESC.dev,l6:function(st){startL6(st||'stairs')},escobarSpriteMode:function(){return ESC.spriteMode()},showDone5:function(st){l5Reset();setLevel(5);S=fresh();showDone5(st||{score:1000,rings:16,ringsN:16,land:'perfect',kos:6,silent:6,detected:0,time:100,retries:0})},showDone6:function(st){cards();showDone6(st||{score:1234,kos:20,chand:3,sharks:4,airs:5,flips:2,time:300,retries:0})},planeSpriteMode:function(){return PLANE.spriteMode()}};
 })();

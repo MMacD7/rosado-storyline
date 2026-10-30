@@ -190,8 +190,10 @@ function drawSpr(g,k,x,y,flip,alpha,s){var im=img(k);if(!im)return false;var m=m
 function cover(g,im,alignY){var sc=Math.max(W/im.width,H/im.height),bw=im.width*sc,bh=im.height*sc,ox=(W-bw)/2,oy=(H-bh)*(alignY==null?1:alignY);g.drawImage(im,ox,oy,bw,bh);return {sc:sc,ox:ox,oy:oy}}
 function render(g,w,t){W=w;if(!M)return;var sk=M.shake>0?(Math.random()*2-1)*3*M.shake/0.25:0;g.setTransform(2,0,0,2,sk*2,0);g.imageSmoothingEnabled=false;
  if(M.stage==='fly')renderFly(g);else if(M.stage==='chute')renderChute(g);else renderStealth(g);
- g.font='bold 9px monospace';g.textAlign='center';
- M.pops.forEach(function(p){var x=M.stage==='stealth'?p.x-M.s.cam:p.x||W/2,y=(p.y||70)-p.t*24;g.globalAlpha=Math.max(0,1-p.t);g.fillStyle='#0a0420';g.fillText(p.txt,x+1,y+1);g.fillStyle=p.c;g.fillText(p.txt,x,y);g.globalAlpha=1});
+ /* v0.6.0: floating score text is bigger, outlined and holds full opacity longer so it reads on every background */
+ g.font='bold 12px monospace';g.textAlign='center';g.lineJoin='round';
+ M.pops.forEach(function(p){var x=M.stage==='stealth'?p.x-M.s.cam:p.x||W/2,y=(p.y||70)-p.t*24,s=p.t<0.08?0.7+p.t*3.75:1;x=Math.max(30,Math.min(W-30,x));g.save();g.globalAlpha=p.t<0.7?1:Math.max(0,1-(p.t-0.7)/0.3);g.translate(x,y);g.scale(s,s);
+  g.lineWidth=4;g.strokeStyle='#0a0420';g.strokeText(p.txt,0,0);g.fillStyle=p.c;g.fillText(p.txt,0,0);g.restore()});
  if(M.flash>0){g.fillStyle='rgba(255,40,80,'+(M.flash*0.22)+')';g.fillRect(0,0,W,H)}
  if(M.t<0.5){g.fillStyle='rgba(0,0,0,'+(1-M.t/0.5)+')';g.fillRect(0,0,W,H)}
  g.setTransform(1,0,0,1,0,0)}
