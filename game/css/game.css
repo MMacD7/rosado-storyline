@@ -1,4 +1,4 @@
-/* Rosado Nights · v0.3.2 · Level 1 "Causeway Chase" (drive) + Level 2 "Reps for Jesus" (gym) + Level 3 "The Alley" (fight) */
+/* Rosado Nights · v0.4.0 · Level 1 "Causeway Chase" (drive) + Level 2 "Reps for Jesus" (gym) + Level 3 "The Alley" (fight) + Level 4 "The Airfield" (chase, fight, plane) */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#07040d;color:#fff;overscroll-behavior:none}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
@@ -319,3 +319,44 @@ button:focus-visible,a:focus-visible{outline:4px solid #fff;outline-offset:3px}
  font:900 italic clamp(24px,6vw,36px)/1 var(--neo);letter-spacing:.06em;color:#fff;background:radial-gradient(circle at 40% 35%,#ff7ae8,#c428d6 60%,#5a1a8a);border:4px solid var(--yel);box-shadow:0 6px 0 #2a0b4a,0 0 30px rgba(255,58,216,.8);touch-action:manipulation}
 #cutTap[hidden]{display:none}
 #cutSkip:focus-visible,#cutTap:focus-visible{outline:4px solid #fff;outline-offset:4px}
+
+/* ---------- v0.4.0 Level 4 "The Airfield" ----------
+   data-l4: intro | chase | fight | plane | done. Chase reuses the Level 1 drive HUD (data-level=1), the fight reuses Level 3 (data-level=3), the plane ending is data-level=4. */
+#app[data-level="4"] #hud,#app[data-level="4"] #controls,#app[data-level="4"] #dhud,#app[data-level="4"] #fhud,#app[data-level="4"] #dctl,#app[data-level="4"] #fctl{display:none!important}
+.l4t{display:none}
+#app[data-l4="chase"] .l1t,#app[data-l4="intro"] .l1t{display:none}
+#app[data-l4="chase"] .l4t,#app[data-l4="intro"] .l4t{display:inline}
+.gapbox{display:none;order:1;min-width:150px;border-color:var(--yel);box-shadow:0 0 10px rgba(255,210,58,.45)}
+.togym{order:2}
+#app[data-l4="chase"] .gapbox{display:block}
+.gapbox .dlab{color:#fff4c8;text-shadow:0 0 6px var(--yel)}
+.gapbox .dlab b{font:900 italic 16px/1 var(--neo);color:#fff;margin-left:4px}.gapbox .dlab small{font:900 10px system-ui;margin-left:2px}
+.gapbar{position:relative;height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(255,58,90,.55),rgba(255,58,90,.15) 12%,rgba(255,255,255,.1) 30%,rgba(255,255,255,.1) 70%,rgba(255,58,90,.4));margin-top:6px;overflow:hidden}
+.gapbar em{position:absolute;top:0;bottom:0;background:rgba(61,255,122,.55);box-shadow:0 0 8px #3dff7a}
+.gapbar i{position:absolute;top:-2px;bottom:-2px;width:4px;margin-left:-2px;background:#fff;box-shadow:0 0 6px #fff,0 0 10px var(--yel);border-radius:2px}
+.gapmsg{font:900 italic 12px/1 var(--neo);letter-spacing:.12em;margin-top:5px;color:#3dff7a;text-shadow:0 0 6px #3dff7a;text-align:center}
+.gapbox.warn .gapmsg{color:var(--yel);text-shadow:0 0 6px var(--yel)}
+.gapbox.bad{border-color:#ff3a5a;box-shadow:0 0 14px rgba(255,58,90,.7)}
+.gapbox.bad .gapmsg{color:#ff5a6a;text-shadow:0 0 6px #ff3a5a;animation:blink .5s steps(2) infinite}
+.duo2{display:flex;gap:6px;align-items:center;margin-top:4px}.duo2[hidden]{display:none}
+#bface2{width:24px;height:24px;border-radius:4px;border:2px solid #b593d9;image-rendering:pixelated;flex:none}
+.who.manny{color:#9dffd8;text-shadow:0 0 8px #2fd39a}.who.aces{color:#ffc9a8;text-shadow:0 0 8px #ff8a5a}
+#done4{background:linear-gradient(180deg,rgba(6,2,14,.25),rgba(6,2,14,.62))}
+#done4 .cardin{background:rgba(10,4,24,.72)}
+.teaser.t4 b{font-size:1.15em}.t4 span{display:block;margin-top:4px}
+#done4 .btnrow .mid,#done4 .btnrow .btnlink{min-width:160px}#done4 .btnrow .big{white-space:nowrap}
+@media not all and (orientation:portrait){#app[data-l4="chase"] .gapbox{position:absolute;top:calc(100% + 6px);left:max(10px,env(safe-area-inset-left))}}
+@media (max-height:500px) and (orientation:landscape){
+ .gapbox{min-width:130px;padding:4px 8px 5px}.gapmsg{font-size:11px;margin-top:3px}.gapbar{height:10px;margin-top:4px}
+ #app[data-l4="chase"] .togym .dbar{display:none}
+ #done4 .where{display:none}#done4 .stats{font-size:14px;line-height:1.3}#done4 .btnrow .big{min-width:190px}#done4 .cardin,#intro4 .cardin{max-width:640px}
+ #intro4 .how{font-size:13px}
+}
+@media (orientation:portrait){
+ #app[data-l4="chase"] #dhud{flex-wrap:wrap;gap:8px 10px;padding-top:10px}
+ #app[data-l4="chase"] .gapbox{order:-1;flex-basis:100%;max-width:360px}
+ #app[data-l4="chase"] .dbox2{padding:6px 10px}
+}
+@media (prefers-reduced-motion:reduce){.gapbox.bad .gapmsg{animation:none}}
+@media (orientation:portrait){#app.duo #bossbar,#app.duo.autofight #bossbar{top:calc(86px + env(safe-area-inset-top))}#app.duo[data-level="3"] #shout{top:calc(min(60vh,87vw) * .52)}}
+@media (orientation:portrait) and (min-width:700px){#app.duo #bossbar,#app.duo.autofight #bossbar{top:calc(120px + env(safe-area-inset-top))}}
