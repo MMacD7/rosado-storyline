@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="Rosado Nights · Level 1: Causeway Chase, drive Richie across the neon bridge to Shred Zeppelin. Level 2: Reps for Jesus, bench press 400 lbs, then hit the heavy bag. Level 3: The Alley, a neon street brawl with El Jefe's linen-suited bodyguards. Level 4: The Airfield, tail the yellow supercar, beat Big Manny and Aces, and fly off in the plane.">
+<meta name="description" content="Rosado Nights · Level 1: Causeway Chase, drive Richie across the neon bridge to Shred Zeppelin. Level 2: Reps for Jesus, bench press 400 lbs, then hit the heavy bag. Level 3: The Alley, a neon street brawl with El Jefe's linen-suited bodyguards. Level 4: The Airfield, tail the yellow supercar, beat Big Manny and Aces, and fly off in the plane. Level 5: Escobar's Mansion, fly through neon rings, parachute onto the lawn and sneak past the guards.">
 <title>Rosado Nights · Level 1: Causeway Chase</title>
-<link rel="stylesheet" href="css/game.css?v=0.4.0">
+<link rel="stylesheet" href="css/game.css?v=0.5.0">
 </head>
 <body>
 <div id="app" data-phase="intro" data-level="1">
@@ -71,6 +71,36 @@
    <button id="fJump" type="button" class="fbtn jump" aria-label="Jump">JUMP</button>
    <button id="fKick" type="button" class="fbtn kick" aria-label="Kick">KICK</button>
    <button id="fAtk" type="button" class="fbtn atk" aria-label="Attack">ATTACK</button>
+  </div>
+ </div>
+
+ <div id="mhud" aria-live="off">
+  <div class="mcol">
+   <div class="mbox fly-only"><span class="ml">ALTITUDE</span><b id="mAlt">800</b><small>FT</small></div>
+   <div class="mbox fly-only"><span class="ml">RINGS</span><b id="mRings">0/16</b></div>
+   <div class="mbox fly-only mboost"><span class="ml">BOOST</span><div class="mbar"><i id="mBoostFill"></i></div></div>
+   <div class="mbox chute-only"><span class="ml">HEIGHT</span><b id="mHeight">450</b><small>FT</small></div>
+   <div class="mbox chute-only"><span class="ml">WIND</span><b id="mWindV">◀ 6</b><small>KT</small></div>
+   <div class="mbox chute-only mtgt"><span class="ml">TARGET</span><div class="tgtbar" aria-label="Distance to the landing target: keep the marker in the middle"><em></em><i id="mTgtMark"></i></div></div>
+   <div class="mbox st-only mrich"><canvas id="mface" width="72" height="72" aria-hidden="true"></canvas><div><div class="ml">RICHIE <span id="mLives">×3</span></div><div class="mbar hp"><i id="mHpi"></i></div></div></div>
+   <div class="mbox st-only mdet" id="mDet"><span class="ml" id="mDetLbl">STEALTH</span><div class="mbar"><i id="mDetFill"></i></div></div>
+   <div class="mbox st-only"><span class="ml">AMMO</span><b id="mAmmo">6</b><span class="ml">GUARDS</span><b id="mGuards">6</b></div>
+   <div class="mbox mscore"><b id="mScore">000000</b></div>
+  </div>
+ </div>
+ <button id="mAuto" type="button" aria-pressed="false" aria-label="Auto: Richie flies, steers and sneaks by himself">
+  <svg class="fist" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l18-6-6 14-3-6z" fill="currentColor"/></svg>
+  <span class="slab" id="mAutoLbl">AUTO PILOT</span><span class="sstate" id="mAutoState">OFF</span></button>
+ <div id="mAutoInd" hidden><i></i><span id="mAutoIndT">AUTO PILOT ON</span></div>
+ <div id="mctl">
+  <div id="mstick" aria-label="Move: drag the joystick" role="application"><div id="mknob"></div></div>
+  <div class="msteer chute-only"><button id="mL" type="button" class="sbtn" aria-label="Steer left">&#9664;</button>
+   <button id="mR" type="button" class="sbtn" aria-label="Steer right">&#9654;</button></div>
+  <div class="mbtns">
+   <button id="mSneak" type="button" class="fbtn st-only sneak" aria-pressed="false" aria-label="Sneak: crouch and creep">SNEAK</button>
+   <button id="mShoot" type="button" class="fbtn st-only shoot" aria-label="Shoot the silenced pistol">SHOOT</button>
+   <button id="mBoost" type="button" class="fbtn fly-only mboostb" aria-label="Boost">BOOST</button>
+   <button id="mFlare" type="button" class="fbtn chute-only flare" aria-label="Flare: hold to slow your drop">FLARE</button>
   </div>
  </div>
  <div id="dialog" hidden>
@@ -145,7 +175,7 @@
   </div>
  </div>
  <div id="cut" hidden>
-  <video id="cutv" playsinline webkit-playsinline preload="none" poster="assets/cutscene-escobar-poster.webp?v=0.4.0" aria-label="Cutscene: Richie finds his car and heads for the airfield"></video>
+  <video id="cutv" playsinline webkit-playsinline preload="none" poster="assets/cutscene-escobar-poster.webp?v=0.5.0" aria-label="Cutscene: Richie finds his car and heads for the airfield"></video>
   <button id="cutTap" type="button" hidden>▶ TAP TO PLAY</button>
   <button id="cutSkip" type="button" aria-label="Skip cutscene">SKIP ▶▶</button>
  </div>
@@ -167,19 +197,43 @@
    <h1 class="small">LEVEL 4 COMPLETE</h1>
    <div class="where">— WHEELS UP. HEADING FOR THE HILLS —</div>
    <p class="stats" id="stats4"></p>
-   <p class="next2 teaser t4" id="teaser4"><b>NEXT: ESCOBAR’S MANSION</b><span>COMING SOON</span></p>
-   <div class="btnrow"><button id="again4" type="button" class="big">↻ PLAY AGAIN</button>
+   <button id="next5" type="button" class="big go3">CONTINUE TO LEVEL 5 →<small>ESCOBAR’S MANSION</small></button>
+   <div class="btnrow"><button id="again4" type="button" class="mid">↻ PLAY AGAIN</button>
    <button id="toL1c" type="button" class="mid">◀ LEVEL 1</button>
+   <a class="mid btnlink" href="../">⌂ HOME</a></div>
+  </div>
+ </div>
+<div id="intro5" class="card" hidden>
+  <div class="cardin">
+   <div class="kicker">ROSADO NIGHTS</div>
+   <h1>LEVEL 5</h1>
+   <h2>ESCOBAR’S MANSION</h2>
+   <div class="where">— DROP IN UNANNOUNCED —</div>
+   <p class="how">Fly the plane through the neon rings: joystick up and down, BOOST for speed. JUMP over the mansion and steer the parachute ◀ ▶ onto the glowing target, out of the searchlights. Then SNEAK past the guards, stay out of their flashlights and SHOOT to knock them out. AUTO helps at every stage.</p>
+   <button id="start5" type="button" class="big">▶ START</button>
+   <p class="rot">Tip: turn your phone sideways for the best view.</p>
+  </div>
+ </div>
+ <div id="done5" class="card" hidden>
+  <div class="cardin">
+   <div class="kicker">ROSADO NIGHTS</div>
+   <h1 class="small">LEVEL 5 COMPLETE</h1>
+   <div class="where">— YOU’RE AT ESCOBAR’S FRONT DOOR —</div>
+   <p class="stats" id="stats5"></p>
+   <p class="next2 teaser t5" id="teaser5"><b>NEXT: ESCOBAR</b><span>COMING SOON</span></p>
+   <div class="btnrow"><button id="again5" type="button" class="big">↻ PLAY AGAIN</button>
+   <button id="toL1d" type="button" class="mid">◀ LEVEL 1</button>
    <a class="mid btnlink" href="../">⌂ HOME</a></div>
   </div>
  </div>
 </div>
 <script src="../theme.js?v=2"></script>
-<script src="js/sfx.js?v=0.4.0"></script>
-<script src="js/drive.js?v=0.4.0"></script>
-<script src="js/fight.js?v=0.4.0"></script>
-<script src="js/plane.js?v=0.4.0"></script>
-<script src="js/art.js?v=0.4.0"></script>
-<script src="js/game.js?v=0.4.0"></script>
+<script src="js/sfx.js?v=0.5.0"></script>
+<script src="js/drive.js?v=0.5.0"></script>
+<script src="js/fight.js?v=0.5.0"></script>
+<script src="js/plane.js?v=0.5.0"></script>
+<script src="js/mansion.js?v=0.5.0"></script>
+<script src="js/art.js?v=0.5.0"></script>
+<script src="js/game.js?v=0.5.0"></script>
 </body>
 </html>
