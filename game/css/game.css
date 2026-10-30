@@ -1,4 +1,4 @@
-/* Rosado Nights · v0.3.1 · Level 1 "Causeway Chase" (drive) + Level 2 "Reps for Jesus" (gym) + Level 3 "The Alley" (fight) */
+/* Rosado Nights · v0.3.2 · Level 1 "Causeway Chase" (drive) + Level 2 "Reps for Jesus" (gym) + Level 3 "The Alley" (fight) */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#07040d;color:#fff;overscroll-behavior:none}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
@@ -308,3 +308,14 @@ button:focus-visible,a:focus-visible{outline:4px solid #fff;outline-offset:3px}
 #shout.rage{color:#fff;font-size:clamp(34px,7vw,64px);letter-spacing:.1em;text-shadow:0 0 6px #fff,0 0 16px #ff3ad8,0 0 34px #ff3ad8,0 0 60px #29d6ff;animation:ragePop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes ragePop{from{transform:translateX(-50%) scale(2.2);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){#shout.rage{animation:none}}
+/* ---------- v0.3.2: cutscene video (Level 3 -> Level 4) ---------- */
+#cut{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center}
+#cut[hidden]{display:none}
+#cutv{width:100%;height:100%;object-fit:contain;background:#000}
+#cutSkip{position:absolute;z-index:2;top:calc(10px + env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));min-width:112px;min-height:56px;padding:0 18px;border-radius:999px;
+ font:900 italic 18px/1 var(--neo);letter-spacing:.08em;color:#fff;background:rgba(10,4,24,.62);border:3px solid #29d6ff;box-shadow:0 0 14px rgba(41,214,255,.6);touch-action:manipulation}
+#cutSkip:active{transform:translateY(2px)}
+#cutTap{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);min-width:min(320px,80vw);min-height:100px;padding:0 28px;border-radius:24px;
+ font:900 italic clamp(24px,6vw,36px)/1 var(--neo);letter-spacing:.06em;color:#fff;background:radial-gradient(circle at 40% 35%,#ff7ae8,#c428d6 60%,#5a1a8a);border:4px solid var(--yel);box-shadow:0 6px 0 #2a0b4a,0 0 30px rgba(255,58,216,.8);touch-action:manipulation}
+#cutTap[hidden]{display:none}
+#cutSkip:focus-visible,#cutTap:focus-visible{outline:4px solid #fff;outline-offset:4px}
