@@ -604,13 +604,13 @@ function drawFx(g,ox,oy){/* particles (world-ish coords: x - cam, y + camY) */
  /* floating score text: bigger, outlined (v0.6.0 nit fix) */
  M.pops.forEach(function(p){var a=p.t>0.9?1-(p.t-0.9)/0.3:1,x=p.x-ox,y=p.y+oy-p.t*26,s=p.t<0.1?0.6+p.t*4:1;g.save();g.globalAlpha=Math.max(0,a);g.translate(x,y);g.scale(s,s);g.font='bold 12px monospace';g.textAlign='center';g.lineJoin='round';g.lineWidth=4;g.strokeStyle='#1a0830';g.strokeText(p.txt,0,0);g.fillStyle=p.c;g.fillText(p.txt,0,0);g.restore()})}
 function render(g,w,t){if(!M)return;W=w||W;var sk=M.shake>0?M.shake*6:0,ox=sk?rnd(-sk,sk):0,oy=sk?rnd(-sk,sk):0;
- g.setTransform(2,0,0,2,ox*2,oy*2);g.clearRect(-20,-20,W+40,H+40);
+ var RS=window.RosadoRS||2;g.setTransform(RS,0,0,RS,ox*RS,oy*RS);g.clearRect(-20,-20,W+40,H+40);
  var s=M.stage,cam=s==='stairs'?M.cam:0,cy=s==='stairs'?M.camY:0;
  if(M.zoom>1.01){var zx=M.zx-cam,zy=M.zy+cy;g.translate(zx,zy);g.scale(M.zoom,M.zoom);g.translate(-zx,-zy)}
  if(M.cine!=='combo')M.zoom=Math.max(1,M.zoom-0.04);
  if(s==='stairs')renderStairs(g);else if(s==='climb')renderClimb(g);else if(s==='roof')renderRoof(g);else if(s==='bay')renderBay(g);else if(s==='deck')renderDeck(g);else renderFinale(g);
  drawFx(g,cam,cy);
- g.setTransform(2,0,0,2,0,0);
+ g.setTransform(RS,0,0,RS,0,0);
  if(M.letter>0){var lb=20*M.letter;g.fillStyle='#000';g.fillRect(0,0,W,lb);g.fillRect(0,H-lb,W,lb)}
  if(M.wflash>0){g.fillStyle='rgba(255,255,255,'+Math.min(0.85,M.wflash*0.85)+')';g.fillRect(0,0,W,H)}
  if(M.stage!=='finale'&&M.fade>0){g.fillStyle='rgba(0,0,0,'+M.fade+')';g.fillRect(0,0,W,H)}

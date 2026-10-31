@@ -1,4 +1,6 @@
-/* Rosado Nights · v0.6.2
+/* Rosado Nights · v0.6.3
+   v0.6.3: El Jefe (Level 3 boss) faces Richie (his art faces right; the fight renderer now reads a per-character art-facing table) and is drawn at 1.2x Richie's height instead of 1.38x;
+           sharp on tablets: every level renders into a buffer at the real device resolution (game rect x devicePixelRatio, capped) instead of a fixed 1x/2x buffer that was nearest-neighbour stretched
    v0.6.2: Mike's ending video (assets/cutscene-ending.mp4) after the helicopter hover, then the ending card with WATCH: ROSADO NIGHTS 2 TEASER
    (assets/cutscene-teaser.mp4, auto-plays once); the Rosado theme fades out (~0.5 s) under every video and back in after it.
    Level 6 "Escobar" (v0.6.0, js/escobar.js), the FINAL level: Mike's showdown video -> title slams -> Phase 1 the grand staircase brawl
@@ -18,7 +20,7 @@
    No network, no tracking. localStorage only keeps level-1-done + best combo / best bag time. */
 (function(){
 "use strict";
-var VERSION='0.6.2';
+var VERSION='0.6.3';
 var T=window.RosadoTheme,SFX=window.RosadoSFX,ART=window.RosadoArt,DRIVE=window.RosadoDrive,FIGHT=window.RosadoFight,PLANE=window.RosadoPlane,MAN=window.RosadoMansion,ESC=window.RosadoEscobar;
 var $=function(id){return document.getElementById(id)};
 var app=$('app'),cv=$('scene'),g=cv.getContext('2d'),buf=document.createElement('canvas'),bg=null,bgW=0;
@@ -67,14 +69,22 @@ var store={get:function(){try{return JSON.parse(localStorage.getItem('rosadoNigh
  set:function(o){try{var c=store.get();for(var k in o)c[k]=o[k];localStorage.setItem('rosadoNights.l1',JSON.stringify(c))}catch(e){}}};
 
 /* ---------- layout ---------- */
-var W=400,scale=1,ox=0,oy=0,dpr=1;
+var W=400,scale=1,ox=0,oy=0,dpr=1,RS=2;
+/* v0.6.3 tablet sharpness: the scene buffer matches the on-screen game rect in device pixels (RS = scale x dpr, dpr capped at 2) instead of a fixed 1x/2x logical buffer.
+   All game logic, hitboxes and touch controls stay in the same logical 225-px-tall coordinates; only the drawing transform changes. MAXPX caps the buffer for frame rate. */
+var MAXPX=2.6e6,MAXPX0=MAXPX;
+/* frame-rate guard: if a device cannot hold ~38 fps for 1 s at this size, the buffer pixel budget steps down by 30% (never below 1.2 Mpx, still ~2-3x sharper than v0.6.2) */
+var PG={on:true,acc:0,n:0,steps:0,floor:1.2e6};
+function perfTick(raw){if(!PG.on||raw<=0||raw>0.25||document.hidden)return;PG.acc+=raw;PG.n++;if(PG.acc>=1){var avg=PG.acc/PG.n;PG.acc=0;PG.n=0;if(avg>0.026&&MAXPX>PG.floor*1.05){MAXPX=Math.max(PG.floor,MAXPX*0.7);PG.steps++;resize()}}}
 function resize(){
  var v=$('view'),cw=v.clientWidth,ch=v.clientHeight;if(!cw||!ch)return;
  dpr=Math.min(window.devicePixelRatio||1,2);
  W=Math.max(ch>cw*0.9?260:300,Math.min(500,Math.round(cw/ch*LH)));
  scale=Math.min(cw/W,ch/LH);ox=(cw-W*scale)/2;oy=(ch-LH*scale)/2;
  cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);
- var bs=level===3||level===5||level===6?2:1;if(W!==bgW){bg=ART.makeBg(W);bgW=W}if(buf.width!==W*bs||buf.height!==LH*bs){buf.width=W*bs;buf.height=LH*bs}
+ var dw=Math.round(W*scale*dpr),rs=Math.max(1,dw/W);if(W*rs*LH*rs>MAXPX)rs=Math.sqrt(MAXPX/(W*LH));rs=Math.round(rs*1000)/1000;
+ if(rs!==RS){RS=rs;bgW=0}window.RosadoRS=RS;window.RosadoSmooth=Math.abs(RS-2)>0.05;
+ if(W!==bgW){bg=ART.makeBg(W);bgW=W}var bw=Math.min(dw,Math.round(W*RS)),bh=Math.min(Math.round(LH*scale*dpr),Math.round(LH*RS));if(buf.width!==bw||buf.height!==bh){buf.width=bw;buf.height=bh}
  render();
 }
 
@@ -584,16 +594,17 @@ function update(dt){
 var flickT=0;
 function render(){
  if(!bg)return;var b=buf.getContext('2d');
- if(level===6){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);ESC.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
- if(level===5){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);MAN.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
- if(level===4){b.setTransform(1,0,0,1,0,0);b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);PLANE.render(b,W,clock);blit();return}
- if(level===3){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);FIGHT.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
- if(level===1){b.imageSmoothingEnabled=false;b.fillStyle='#07040d';b.fillRect(0,0,W,LH);DRIVE.render(b,W,clock,T&&T.isPlaying()?T.level():0);blit();return}
+ if(level===6){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);sm(b);ESC.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
+ if(level===5){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);sm(b);MAN.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
+ if(level===4){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);sm(b);PLANE.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
+ if(level===3){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);sm(b);FIGHT.render(b,W,clock);b.setTransform(1,0,0,1,0,0);blit();return}
+ if(level===1){b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);sm(b);DRIVE.render(b,W,clock,T&&T.isPlaying()?T.level():0);b.setTransform(1,0,0,1,0,0);blit();return}
  var strain=S.phase==='press'&&clock-S.lastTap<IDLE?1:0,amp=S.shake*(1+S.rep*0.5);
  flickT=(Math.sin(clock*7.3)+Math.sin(clock*2.1))>1.85;
  var bagPh=S.phase==='bag'||S.phase==='bagEnd'||S.phase==='noise'||(S.phase==='talk'&&S.tapsPerRep.length===3),exitPh=S.phase==='turn'||S.phase==='exit'||S.phase==='done';
  var lay=exitPh?'exit':bagPh?'bag':(!S.pressStarted&&(S.phase==='intro'||S.phase==='talk'))?'stand':'press';
  var ap=S.phase==='lockout'||S.phase==='record'?'cheer':strain&&S.shoutT>0?'shout':'spot';
+ b.setTransform(1,0,0,1,0,0);b.fillStyle='#07040d';b.fillRect(0,0,buf.width,buf.height);sm(b);
  ART.drawScene(b,bg,{layout:lay,t:clock,phase:bagPh||exitPh?'bag':'press',
   barH:S.hDisp,lowering:S.phase==='lower',rep:S.rep,dip:strain?Math.sin(clock*55)*0.8*(1+S.rep):0,strain:strain,richieExpr:S.richieExpr,apolloExpr:S.apolloExpr,apolloArms:S.apolloArms,apolloPose:ap,
   bagAng:S.bagAng,bagFlash:S.bagFlash,bagSquash:S.bagSquash,punch:S.punchT>=0?Math.sin(Math.PI*Math.min(1,S.punchT/0.22)):0,sincePunch:clock-S.lastPunch,punchSide:S.punchSide,
@@ -601,12 +612,16 @@ function render(){
   parts:S.parts,shakeX:(Math.random()-0.5)*amp*2,shakeY:(Math.random()-0.5)*amp*1.5,flicker:flickT,pulse:T&&T.isPlaying()?T.level():0});
  blit();
 }
+/* logical-unit transform + smoothing for the buffer (the art is ~2x logical, so it is resampled unless RS is exactly 2) */
+function sm(b){b.setTransform(RS,0,0,RS,0,0);b.imageSmoothingEnabled=window.RosadoSmooth;b.imageSmoothingQuality='low'}
 function blit(){
- g.setTransform(1,0,0,1,0,0);g.fillStyle='#07040d';g.fillRect(0,0,cv.width,cv.height);g.imageSmoothingEnabled=false;
- g.drawImage(buf,Math.round(ox*dpr),Math.round(oy*dpr),Math.round(W*scale*dpr),Math.round(LH*scale*dpr));
+ g.setTransform(1,0,0,1,0,0);g.fillStyle='#07040d';g.fillRect(0,0,cv.width,cv.height);var dw=Math.round(W*scale*dpr),dh=Math.round(LH*scale*dpr);
+ /* 1:1 copy when the buffer already is the on-screen size (the usual case); bilinear only when the pixel cap made it smaller */
+ g.imageSmoothingEnabled=!(buf.width===dw&&buf.height===dh);g.imageSmoothingQuality='low';
+ g.drawImage(buf,Math.round(ox*dpr),Math.round(oy*dpr),dw,dh);
 }
 function loop(ts){
- var dt=Math.min(0.05,Math.max(0,(ts-last)/1000));last=ts;
+ var raw=(ts-last)/1000,dt=Math.min(0.05,Math.max(0,raw));last=ts;if(!paused)perfTick(raw);
  if(!paused)update(dt);render();requestAnimationFrame(loop);
 }
 
@@ -746,7 +761,7 @@ window.__rosado={version:VERSION,REPS:REPS,BAG:BAG,IDLE:IDLE,IDLE_MULT:IDLE_MULT
  snap:function(){var L=bagLevel();return {level:level,l4:L4,l5:L5,l6:L6,escobar:ESC.snap(),slam:{on:SLAM.on,text:SLAM.on?$('slamA').textContent:'',shown:SLAM.shown.slice()},mansion:MAN.snap(),plane:PLANE.snap(),drive:DRIVE.snap(),phase:S.phase,rep:S.rep,h:S.h,taps:S.taps,tapsPerRep:S.tapsPerRep.slice(),hits:S.hits,combo:S.combo,bestCombo:S.bestCombo,misses:S.misses,
   timeLeft:S.timeLeft,marker:markerPos(S.m),dir:(S.m%2)<1?1:-1,zone:[BAG.center[L]-BAG.zone[L],BAG.center[L]+BAG.zone[L]],speed:BAG.speed[L],cd:S.cd,paused:paused,dialog:!!DQ,line:DQ?DQ.full:'',
   musicOn:musicOn,music:!!(T&&T.isPlaying()),themeGain:T&&T.gain?+T.gain().toFixed(3):null,themeFading:!!(T&&T.fading&&T.fading()),teaserHow:S6.teaserHow,cut:(function(){var v=$('cutv');return {on:CUT.on,kind:CUT.kind,state:CUT.state,how:CUT.how,fallback:CUT.fallback,found:!!CUT.found,visible:!$('cut').hidden,t:v.currentTime,paused:v.paused,src:v.getAttribute('src')||'',tap:!$('cutTap').hidden}})(),fight:FIGHT.snap(),W:W,story:S.story.slice(),exitX:S.exitX,walking:S.walking,exitOff:(function(){if(S.exitX==null)return false;var an=ART.anchors(W,0,clock);return an.fromBg?an.fromBg(S.exitX-70)>W:false})(),clangs:SFX.clangs?SFX.clangs():0}},
- loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightBox:function(i){var f=FIGHT.snap();if(!f)return null;var e=i<0?f.player:f.enemies[i];if(!e)return null;var m=FIGHT.META[e.frame],hw=m?Math.max(m[2],m[0]-m[2])/2:e.h*0.3,r=$('view').getBoundingClientRect(),X=function(x){return r.left+ox+(x-f.cam)*scale},Y=function(y){return r.top+oy+y*scale};
-  return {l:X(e.x-hw),r:X(e.x+hw),t:Y(e.y-(e.z||0)-e.h),b:Y(e.y-(e.z||0)),feet:Y(e.y),scale:scale,h:e.h}},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,
+ loadSprites:function(map){return ART.loadSprites(map,function(){bgW=0;resize()})},spriteMode:function(){return ART.spriteMode()},driveSpriteMode:function(){return DRIVE.spriteMode()},fightBox:function(i){var f=FIGHT.snap();if(!f)return null;var e=i<0?f.player:f.enemies[i];if(!e)return null;var m=FIGHT.META[e.frame],hw=m?Math.max(m[2],m[0]-m[2])/2*(e.type==='jefe'?FIGHT.JEFE_SC:1):e.h*0.3,r=$('view').getBoundingClientRect(),X=function(x){return r.left+ox+(x-f.cam)*scale},Y=function(y){return r.top+oy+y*scale};
+  return {l:X(e.x-hw),r:X(e.x+hw),t:Y(e.y-(e.z||0)-e.h),b:Y(e.y-(e.z||0)),feet:Y(e.y),scale:scale,h:e.h}},fightSpriteMode:function(){return FIGHT.spriteMode()},fdev:FIGHT.dev,renderInfo:function(){var v=$('view');return {RS:RS,bw:buf.width,bh:buf.height,cvw:cv.width,cvh:cv.height,cssw:cv.clientWidth,cssh:cv.clientHeight,vw:v.clientWidth,vh:v.clientHeight,dpr:dpr,rawDpr:window.devicePixelRatio||1,scale:scale,W:W,LH:LH,ox:ox,oy:oy,smooth:!!window.RosadoSmooth,maxpx:MAXPX,maxpx0:MAXPX0,guard:{on:PG.on,steps:PG.steps,floor:PG.floor},level:level}},perfGuard:function(on){PG.on=!!on;PG.acc=PG.n=0;if(!on){MAXPX=MAXPX0;PG.steps=0}resize();return PG.on},perfTick:function(raw){perfTick(raw)},
  dev:DRIVE.dev,CFG:DRIVE.CFG,pdev:PLANE.dev,mdev:MAN.dev,showDone4:function(){cards();showDone4()},mansionSpriteMode:function(){return MAN.spriteMode()},edev:ESC.dev,l6:function(st){startL6(st||'stairs')},escobarSpriteMode:function(){return ESC.spriteMode()},showDone5:function(st){l5Reset();setLevel(5);S=fresh();showDone5(st||{score:1000,rings:16,ringsN:16,land:'perfect',kos:6,silent:6,detected:0,time:100,retries:0})},showDone6:function(st){cards();showDone6(st||{score:1234,kos:20,chand:3,sharks:4,airs:5,flips:2,time:300,retries:0})},planeSpriteMode:function(){return PLANE.spriteMode()}};
 })();

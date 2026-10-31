@@ -188,7 +188,7 @@ function meta(k){return META[k]||(window.RosadoFight&&window.RosadoFight.META&&w
 function drawSpr(g,k,x,y,flip,alpha,s){var im=img(k);if(!im)return false;var m=meta(k)||[im.naturalWidth,im.naturalHeight,im.naturalWidth/2];s=s||1;var w=im.naturalWidth/2*s,h=im.naturalHeight/2*s,ax=m[2]/2*s;
  g.save();if(alpha!=null)g.globalAlpha=alpha;g.translate(Math.round(x),Math.round(y));if(flip)g.scale(-1,1);g.drawImage(im,-ax,-h,w,h);g.restore();return true}
 function cover(g,im,alignY){var sc=Math.max(W/im.width,H/im.height),bw=im.width*sc,bh=im.height*sc,ox=(W-bw)/2,oy=(H-bh)*(alignY==null?1:alignY);g.drawImage(im,ox,oy,bw,bh);return {sc:sc,ox:ox,oy:oy}}
-function render(g,w,t){W=w;if(!M)return;var sk=M.shake>0?(Math.random()*2-1)*3*M.shake/0.25:0;g.setTransform(2,0,0,2,sk*2,0);g.imageSmoothingEnabled=false;
+function render(g,w,t){W=w;if(!M)return;var sk=M.shake>0?(Math.random()*2-1)*3*M.shake/0.25:0;var RS=window.RosadoRS||2;g.setTransform(RS,0,0,RS,sk*RS,0);g.imageSmoothingEnabled=!!window.RosadoSmooth;
  if(M.stage==='fly')renderFly(g);else if(M.stage==='chute')renderChute(g);else renderStealth(g);
  /* v0.6.0: floating score text is bigger, outlined and holds full opacity longer so it reads on every background */
  g.font='bold 12px monospace';g.textAlign='center';g.lineJoin='round';
@@ -202,7 +202,7 @@ function skyFallback(g,k){var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop
  for(var i=0;i<16;i++){var bx=((i*W/14)-(k||0)*0.2)%(W+40),bh=30+((i*37)%50);if(bx<-30)bx+=W+40;g.fillStyle=i%3?'#24123a':'#2c1848';g.fillRect(bx,H*0.82-bh,W/14-2,bh);g.fillStyle='#ffcf8a';g.fillRect(bx+4,H*0.82-bh+6,2,2)}
  g.fillStyle='#120a2a';g.fillRect(0,H*0.82,W,H*0.18)}
 function renderFly(g){var f=M.f,bg=SPR['l4-fly-bg'],pan=clamp(f.s/f.len,0,1),yn=(f.y-FLY.ymin)/(FLY.ymax-FLY.ymin);
- if(bg){var sc=Math.max(W/bg.width,H/bg.height)*1.3,bw=bg.width*sc,bh=bg.height*sc,ox=-(bw-W)*lerp(0.02,1,pan),oy=(H-bh)*(0.5+0.5*yn);g.imageSmoothingEnabled=true;g.drawImage(bg,ox,oy,bw,bh);g.imageSmoothingEnabled=false}
+ if(bg){var sc=Math.max(W/bg.width,H/bg.height)*1.3,bw=bg.width*sc,bh=bg.height*sc,ox=-(bw-W)*lerp(0.02,1,pan),oy=(H-bh)*(0.5+0.5*yn);g.imageSmoothingEnabled=true;g.drawImage(bg,ox,oy,bw,bh);g.imageSmoothingEnabled=!!window.RosadoSmooth}
  else skyFallback(g,f.s);
  /* water sparkles rushing under the plane */
  g.globalCompositeOperation='lighter';for(var i=0;i<24;i++){var lx=((i*61)-f.s*(1.2+(i%3)*0.3))%(W+20);if(lx<-10)lx+=W+20;g.fillStyle=i%2?'rgba(255,80,200,.5)':'rgba(80,220,255,.45)';g.fillRect(lx,H-8-(i%4)*3,6+(i%3)*3,1)}g.globalCompositeOperation='source-over';

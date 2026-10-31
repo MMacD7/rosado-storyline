@@ -60,11 +60,11 @@ function fit(W,cam){var k=Math.max((W+PAD)/LAY.IW,H/LAY.IH);return {k:k,ox:(W-LA
 function camX(t){return Math.sin((t||0)*0.37)*2.2+Math.sin((t||0)*0.91)*0.8}
 function mote(i){var r=Math.sin(i*127.1)*43758.5453;return r-Math.floor(r)}
 function drawSpriteScene(g,bg,S){
- var W=bg.width-PAD,t=S.t||0,cam=camX(t),F=fit(W,cam),k=F.k,L=S.layout||'press',X2=2;
+ var W=(bg.__lw||bg.width)-PAD,t=S.t||0,cam=camX(t),F=fit(W,cam),k=F.k,L=S.layout||'press',X2=2;
  var sx=Math.round(S.shakeX||0),sy=Math.round(S.shakeY||0);
  g.save();g.translate(sx,sy);
- g.drawImage(bg,Math.round(-PAD/2+cam),0);
- g.save();g.translate(F.ox,F.oy);g.scale(k,k);g.imageSmoothingEnabled=false;
+ g.drawImage(bg,Math.round(-PAD/2+cam),0,bg.__lw||bg.width,H);
+ g.save();g.translate(F.ox,F.oy);g.scale(k,k);g.imageSmoothingEnabled=!!window.RosadoSmooth;
  function fr(n,x,bottom,a,flip,dy){var im=SPR[n],w=im.naturalWidth*X2,h=im.naturalHeight*X2,x0=x-(a||0)*X2,y0=bottom-h+(dy||0);
   if(flip){g.save();g.translate(x0+w,y0);g.scale(-1,1);g.drawImage(im,0,0,w,h);g.restore()}else g.drawImage(im,x0,y0,w,h);return [x0,y0,w,h]}
  function shadow(x,y,rx){g.fillStyle='rgba(10,0,20,.42)';g.beginPath();g.ellipse(x,y,rx,rx*0.15,0,0,Math.PI*2);g.fill()}
@@ -151,7 +151,7 @@ function spriteAnchors(W,t){var F=fit(W,camX(t)),k=F.k,m=function(x,y){return [F
 /* ---------- static background (wall, ceiling, signs, racks, floor) ---------- */
 function makeBg(W){
  var c=document.createElement('canvas');c.width=W;c.height=H;var g=c.getContext('2d'),r=rng(77),cx=W/2,bx=cx+30;
- if(spriteMode()){c.width=W+PAD;var im=SPR.bg,k=Math.max((W+PAD)/im.naturalWidth,H/im.naturalHeight),dw=im.naturalWidth*k,dh=im.naturalHeight*k;g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(im,(W+PAD-dw)/2,(H-dh)/2,dw,dh);c.__img=true;
+ if(spriteMode()){var CS=Math.min(3,Math.max(1,window.RosadoRS||1));c.width=Math.round((W+PAD)*CS);c.height=Math.round(H*CS);c.__lw=W+PAD;g.setTransform(CS,0,0,CS,0,0);var im=SPR.bg,k=Math.max((W+PAD)/im.naturalWidth,H/im.naturalHeight),dw=im.naturalWidth*k,dh=im.naturalHeight*k;g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(im,(W+PAD-dw)/2,(H-dh)/2,dw,dh);c.__img=true;
   var v=document.createElement('canvas');v.width=W;v.height=H;var vg=v.getContext('2d'),rg=vg.createRadialGradient(W/2,H*0.55,H*0.35,W/2,H*0.55,W*0.62);rg.addColorStop(0,'rgba(6,0,14,0)');rg.addColorStop(1,'rgba(6,0,14,.5)');vg.fillStyle=rg;vg.fillRect(0,0,W,H);c.__vig=v;return c}
  /* brick wall */
  R(g,0,0,W,FLOOR,'#1d1426');

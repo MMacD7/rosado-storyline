@@ -22,12 +22,19 @@ var TYPES={
  rafa:{hp:42,spd:52,name:'RAFA',reach:30,cd:[1.0,1.8],block:0.45},
  bruno:{hp:58,spd:38,name:'BRUNO',reach:24,cd:[1.4,2.4]},
  tito:{hp:62,spd:30,name:'TITO',reach:32,cd:[1.6,2.6]},
- jefe:{hp:150,spd:44,name:'EL JEFE ESTEBAN LAVANDA',reach:52,cd:[1.4,2.2],big:1},
+ jefe:{hp:150,spd:44,name:'EL JEFE ESTEBAN LAVANDA',reach:45,cd:[1.4,2.2],big:1},
  /* Level 4 hangar duo: Big Manny (heavy: can't be grabbed, shrugs off jabs mid-move, shoulder CHARGE + ground STOMP) and Aces (fast: dodges punches, double jab + flying kick) */
  manny:{hp:120,spd:34,name:'BIG MANNY',reach:30,cd:[1.5,2.4]},
  aces:{hp:84,spd:60,name:'ACES',reach:30,cd:[0.9,1.6],dodge:0.45}};
 var STAGE='alley',LEN4=800,PLANE_X=LEN4-132;
-var JEFE_YMIN=YMIN+14; /* 7 ft: keep his head below the HUD / pause button */
+var JEFE_YMIN=YMIN+14; /* keep his head below the HUD / pause button */
+/* v0.6.3: El Jefe drawn at 0.87x of his art (idle 103.5 px vs Richie's 86 px = 1.2x, was 1.38x); his reach, cane range, hurtbox, spark and shadow are scaled with him */
+var JEFE_SC=0.87;
+/* v0.6.3: which way each character's sprite art faces (1 = right, -1 = left). Richie's and El Jefe's art face right, the bodyguards / Manny / Aces face left.
+   drawEnt() mirrors a frame only when the character's facing (e.face) differs from its art's facing. SFK overrides single frames (El Jefe's KO sit faces left). */
+var SF={richie:1,rafa:-1,bruno:-1,tito:-1,jefe:1,manny:-1,aces:-1},SFK={'l3-jefe-down':-1};
+function artFace(e,k){return SFK[k]||SF[e.type]||-1}
+function scOf(e){return e.type==='jefe'?JEFE_SC:1}
 var ATK={jab:{d:7,r:34,t:0.24,hit:0.07,kb:8},jab2:{d:7,r:34,t:0.24,hit:0.07,kb:8},hook:{d:13,r:38,t:0.36,hit:0.12,kb:0,down:1},
  kick:{d:13,r:42,t:0.5,hit:0.02,kb:0,down:1},
  fkick:{d:9,r:46,t:0.34,hit:0.12,kb:72,k:1},round:{d:11,r:46,t:0.4,hit:0.15,kb:20,k:1},heel:{d:15,r:48,t:0.5,hit:0.24,down:1,k:1},round2:{d:14,r:46,t:0.42,hit:0.15,down:1,k:1},
@@ -129,7 +136,7 @@ function doThrow(p,g){startAtk(p,'throw');p.grabKeep=null;p.grab=null;F.stats.th
  g.st='air';g.t=0;g.thrown=true;g.face=-p.face;g.vx=p.face*170;g.vz=150;g.z=8;g.x=p.x+p.face*10;damage(g,ATK.throw.d,p,true);sfx('whiff');pop(p.x,p.y-95,'THROW!','#ff8af0')}
 function playerHit(p,A){var any=false;
  F.enemies.forEach(function(e){if(!alive(e)||e.st==='down'||e.st==='air'||e.st==='getup'||e.st==='dead')return;if(e.inv>0)return;
-  var dx=(e.x-p.x)*p.face,bigE=e.type==='jefe'?8:0;if(A.both)dx=Math.abs(e.x-p.x);if(dx<-6||dx>A.r+bigE||Math.abs(e.y-p.y)>12+bigE/2)return;if(p.atk==='knee'&&e!==p.grabKeep)return;
+  var dx=(e.x-p.x)*p.face,bigE=e.type==='jefe'?7:0;if(A.both)dx=Math.abs(e.x-p.x);if(dx<-6||dx>A.r+bigE||Math.abs(e.y-p.y)>12+bigE/2)return;if(p.atk==='knee'&&e!==p.grabKeep)return;
   if(p.atk==='kick'&&p.hitList&&p.hitList.indexOf(e)>=0)return;
   /* Aces slips punches: use kicks, throws or RICHIE RAGE on him */
   if(e.type==='aces'&&(e.st==='idle'||e.st==='walk')&&!A.k&&!A.both&&p.atk!=='kick'&&p.atk!=='throw'&&p.atk!=='knee'&&Math.random()<TYPES.aces.dodge){e.st='hop';e.t=0;e.vx=(e.x>=p.x?1:-1)*120;F.stats.dodges++;pop(e.x,e.y-92,'DODGE!','#ffb38a');sfx('whiff');any=true;return}
@@ -145,7 +152,7 @@ function playerHit(p,A){var any=false;
 function damage(e,d,src,down){
  if((e.type==='jefe'||e.type==='manny')&&down&&e.hp-d>0&&Math.random()<(e.type==='manny'?0.4:0.5))down=false;
  e.hp=Math.max(0,e.hp-d);e.flash=0.14;e.hits++;F.stats.hits++;addScore(100);F.ehud={e:e,t:2.2};
- var big=down||d>=13;spark(e.x+(src.x<e.x?-8:8),e.y-(e.type==='jefe'?84:e.type==='manny'?74:66),big);sfx('punch',big?1.3:1);
+ var big=down||d>=13;spark(e.x+(src.x<e.x?-8:8),e.y-(e.type==='jefe'?73:e.type==='manny'?74:66),big);sfx('punch',big?1.3:1);
  if(e.hp<=0)down=true;
  if(!down&&e.z>3)down=true; /* knocked out of a jump / flying kick */
  /* Big Manny shrugs off light hits while he winds up or charges */
@@ -178,6 +185,8 @@ function retryWave(){var p=F.player;F.stats.retries++;F.lives=3;p.hp=100;p.st='i
 function spawn(type,side){var x=side>0?F.cam+W+24:F.cam-24,e=ent(type,x,rnd(YMIN+4,YMAX-4),side>0?-1:1);e.st='enter';F.enemies.push(e);return e}
 function tokens(){return F.enemies.filter(function(e){return e.st==='wind'||e.st==='atk'||e.st==='hug'}).length}
 function enemyUpdate(e,dt){var p=F.player,T=TYPES[e.type];e.t+=dt;e.flash=Math.max(0,e.flash-dt);e.inv=Math.max(0,e.inv-dt);
+ /* v0.6.3: El Jefe keeps his eyes on Richie in every state (idle, walk, hurt, whistle, wind-up, knocked down / KO); a swing already in progress stays committed until it has hit or missed */
+ if(e.type==='jefe'&&e.st!=='enter'&&e.st!=='gone'&&!(e.st==='atk'&&!e.hitDone)){var fdx=p.x-e.x;if(Math.abs(fdx)>2)e.face=fdx>0?1:-1}
  if(e.st==='dead'){e.t+=0;if(e.t>1.5)e.st='gone';return}
  if(e.st==='air'||e.st==='down'||e.st==='getup'){fall(e,dt);return}
  if(e.st==='grabbed'){if(e.t>1.8){e.st='idle';e.t=0}return}
@@ -205,7 +214,7 @@ function enemyUpdate(e,dt){var p=F.player,T=TYPES[e.type];e.t+=dt;e.flash=Math.m
  clampLane(e);if(e.type==='jefe')e.y=Math.max(JEFE_YMIN,e.y);e.x=Math.max(F.cam-30,Math.min(F.cam+W+30,e.x));
  if(want&&adx<T.reach+4&&Math.abs(dy)<8){e.st='wind';e.t=0;e.atk=e.type==='jefe'?(Math.random()<0.55?'hook':'twirl'):e.type==='rafa'?'punch':e.type==='bruno'?'hug':e.type==='manny'?'stomp':e.type==='aces'?'jab2':'slam';e.hitDone=false;e.hit2=false;e.quaked=false;if(e.atk==='stomp')F.stats.stomps++;e.face=dx>0?1:-1;if(e.type==='tito')sfx('strain',0.6)}
 }
-var EATK={punch:{w:0.28,a:0.22,d:8,r:34},counter:{w:0.12,a:0.22,d:9,r:36},hug:{w:0.45,a:0.3,d:0,r:30},slam:{w:0.62,a:0.38,d:14,r:38,down:1},hook:{w:0.38,a:0.3,d:9,r:56,trip:1},twirl:{w:0.3,a:0.7,d:11,r:54,down:1},
+var EATK={punch:{w:0.28,a:0.22,d:8,r:34},counter:{w:0.12,a:0.22,d:9,r:36},hug:{w:0.45,a:0.3,d:0,r:30},slam:{w:0.62,a:0.38,d:14,r:38,down:1},hook:{w:0.38,a:0.3,d:9,r:49,trip:1},twirl:{w:0.3,a:0.7,d:11,r:47,down:1},
  charge:{w:0.5,a:0.62,d:12,r:30,down:1,rush:175},stomp:{w:0.55,a:0.5,d:10,r:50,down:1,quake:1},jab2:{w:0.16,a:0.4,d:5,r:32,two:1},flykick:{w:0.22,a:0.55,d:11,r:30,down:1,leap:165}};
 function attackUpdate(e,dt,dx,dy){var A=EATK[e.atk],p=F.player,T=TYPES[e.type];
  if(e.st==='wind'){if(e.atk==='hug')e.x+=e.face*30*dt;if(e.t>=A.w){e.st='atk';e.t=0;sfx(e.atk==='twirl'?'spin':'whiff')}return}
@@ -342,7 +351,7 @@ function bgPanel4(k){var key='4'+k;if(BGC[key])return BGC[key];var c=document.cr
  BGC[key]=c;return c}
 function img(k){return SPR[k]}
 function white(k){if(WHITE[k])return WHITE[k];var im=SPR[k];if(!im)return null;var c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;var g=c.getContext('2d');g.drawImage(im,0,0);g.globalCompositeOperation='source-in';g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);WHITE[k]=c;return c}
-function drawSpr(g,k,x,y,flip,flash,alpha){var im=img(k);if(!im)return false;var m=META[k]||[im.naturalWidth,im.naturalHeight,im.naturalWidth/2],w=im.naturalWidth/2,h=im.naturalHeight/2,ax=m[2]/2;
+function drawSpr(g,k,x,y,flip,flash,alpha,sc){var im=img(k);if(!im)return false;sc=sc||1;var m=META[k]||[im.naturalWidth,im.naturalHeight,im.naturalWidth/2],w=im.naturalWidth/2*sc,h=im.naturalHeight/2*sc,ax=m[2]/2*sc;
  g.save();if(alpha!=null)g.globalAlpha=alpha;g.translate(Math.round(x),Math.round(y));if(flip)g.scale(-1,1);g.drawImage(im,-ax,-h,w,h);if(flash){var wc=white(k);if(wc){g.globalAlpha=Math.min(1,flash*7)*(alpha==null?1:alpha);g.drawImage(wc,-ax,-h,w,h)}}g.restore();return true}
 function frameOf(e){var t=e.type,s=e.st;
  if(t==='richie'){if(s==='walk'||s==='walkin'||(s==='auto'&&F.st==='ending'&&!F.seen)||(s==='auto'&&F.st==='board'))return 'l3-r-walk-'+(Math.floor(F.time*8)%4);
@@ -360,7 +369,7 @@ function frameOf(e){var t=e.type,s=e.st;
  return pre+'idle'}
 /* canvas fallback figure */
 var COL={richie:{skin:'#c98a5a',top:'#f4f4f4',leg:'#1c1c24',hair:'#a8a8b0',h:86},bruno:{skin:'#b8784a',top:'#e8dcc0',leg:'#e0d2b4',hair:'#1a1410',h:90,wide:1.25},tito:{skin:'#b07448',top:'#e8dcc0',leg:'#e0d2b4',hair:'#2a2420',h:91},
- rafa:{skin:'#b87a4c',top:'#e8dcc0',leg:'#e0d2b4',hair:'#141010',h:88},jefe:{skin:'#c99070',top:'#b593d9',leg:'#a983cf',hair:'#d8d8de',h:119},
+ rafa:{skin:'#b87a4c',top:'#e8dcc0',leg:'#e0d2b4',hair:'#141010',h:88},jefe:{skin:'#c99070',top:'#b593d9',leg:'#a983cf',hair:'#d8d8de',h:103},
  manny:{skin:'#a86a40',top:'#8fe0bf',leg:'#7fd3b0',hair:'#a86a40',h:100,wide:1.4},aces:{skin:'#c08050',top:'#f6b48f',leg:'#efa684',hair:'#7a3a1a',h:88}};
 function drawFig(g,e,x,y,flip,flash,alpha){var c=COL[e.type],s=e.st,h=c.h,w=(c.wide||1)*h*0.26;g.save();g.translate(Math.round(x),Math.round(y));if(flip)g.scale(-1,1);if(alpha!=null)g.globalAlpha=alpha;
  var base=e.type==='richie'?1:-1;g.scale(base,1);var fl=flash>0,F2=function(col){return fl?'#fff':col};
@@ -381,14 +390,14 @@ function drawEnt(g,e,cx){var x=e.x-cx,y=e.y-e.z,flip;
  if(x<-120||x>W+120)return;
  if(e.st==='incar')return;
  /* shadow */
- g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(e.x-cx,e.y,e.type==='jefe'?24:e.type==='manny'?22:18,e.type==='jefe'||e.type==='manny'?5:4,0,0,Math.PI*2);g.fill();
+ g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(e.x-cx,e.y,e.type==='jefe'?21:e.type==='manny'?22:18,e.type==='jefe'||e.type==='manny'?5:4,0,0,Math.PI*2);g.fill();
  var alpha=e===F.player&&F.boarding?e.boardA:e.st==='dead'&&e.t>0.6?(Math.floor(e.t*14)%2?0.15:1):(e.inv>0&&e===F.player&&Math.floor(F.time*16)%2?0.45:null);
- var k=frameOf(e),base=e.type==='richie'?1:-1;flip=e.face!==base;
+ var k=frameOf(e),sc=scOf(e);flip=e.face!==artFace(e,k);
  if(e.type==='richie'&&e.st==='atk'&&(e.atk==='spin'||e.atk==='rage'&&e.t>=0.14))flip=Math.floor(e.t*16)%2?!flip:flip;
  if(e.type==='richie'&&e.st==='atk'&&e.atk==='heel'&&e.t<0.12)flip=!flip;
  if(e.type==='richie'&&e.st==='atk'&&e.atk==='rage'){g.save();g.globalCompositeOperation='lighter';var ag=Math.min(1,e.t*5)*(1-e.t/1.0);g.fillStyle='rgba(255,58,216,'+(0.22*ag)+')';g.beginPath();g.ellipse(x,y-44,34,52,0,0,Math.PI*2);g.fill();g.fillStyle='rgba(41,214,255,'+(0.16*ag)+')';g.beginPath();g.ellipse(x,y-44,22,40,0,0,Math.PI*2);g.fill();g.restore()}
  var shake=e.st==='hurt'||e.st==='held'?Math.sin(F.time*80)*1.5:0;
- if(!(spriteMode()&&drawSpr(g,k,x+shake,y,flip,e.flash,alpha)))drawFig(g,e,x+shake,y,flip,e.flash,alpha);
+ if(!(spriteMode()&&drawSpr(g,k,x+shake,y,flip,e.flash,alpha,sc))){flip=e.face!==(e.type==='richie'?1:-1);drawFig(g,e,x+shake,y,flip,e.flash,alpha)}
  if(e===F.player&&e.weapon>0&&(e.st==='idle'||e.st==='walk'||e.st==='atk'&&e.atk==='cane')){var sw=e.st==='atk'?Math.min(1,e.t/0.15):0;g.save();g.translate(x+e.face*14,y-46);g.rotate(e.face*(-0.6+sw*2.0));
   if(img('l3-cane'))g.drawImage(img('l3-cane'),-4,-36,17,40);else{g.fillStyle='#111';g.fillRect(-1,-34,3,36);g.fillStyle='#ffd23a';g.fillRect(-3,-37,8,4)}g.restore()}
  if(e.st==='down'&&e!==F.player&&e.hp>0||e.st==='getup'){g.fillStyle='#ffd23a';for(var i=0;i<3;i++){var a=F.time*6+i*2.1;g.fillRect(x+Math.cos(a)*10-1,y-24+Math.sin(a)*3-1,3,3)}}
@@ -402,7 +411,7 @@ function drawCar(g,cx){var c=F.car,x=c.x-cx,y=CAR_Y;if(x<-260||x>W+260)return;va
   if(c.dmg){g.strokeStyle='#fff';g.lineWidth=1;g.beginPath();g.moveTo(x+30,y-46);g.lineTo(x+38,y-52);g.moveTo(x+30,y-46);g.lineTo(x+24,y-40);g.moveTo(x+30,y-46);g.lineTo(x+40,y-42);g.stroke();g.fillStyle='#555';g.fillRect(x-40,y-30,14,4);g.fillRect(x+4,y-26,18,3)}}
  if(c.richieIn){g.fillStyle='#c98a5a';g.fillRect(x+6,y-52,7,8);g.fillStyle='#a8a8b0';g.fillRect(x+6,y-54,7,3)}
  if(F.st==='ending'&&F.seen){var bl=Math.floor(F.time*6)%2;g.strokeStyle=bl?'#ffd23a':'#fff';g.lineWidth=1.5;[[x-34,y-30],[x+30,y-46],[x+8,y-24]].forEach(function(d){g.beginPath();g.arc(d[0],d[1],7+bl*2,0,Math.PI*2);g.stroke()})}}
-function render(g,w,t){W=w;if(!F)return;var sk=F.shakeT>0?Math.min(1,F.shakeT/0.3)*3:0,sx=sk?(Math.random()*2-1)*sk:0,sy=sk?(Math.random()*2-1)*sk*0.7:0;g.setTransform(2,0,0,2,sx*2,sy*2);g.imageSmoothingEnabled=false;var cx=Math.round(F.cam);
+function render(g,w,t){W=w;if(!F)return;var sk=F.shakeT>0?Math.min(1,F.shakeT/0.3)*3:0,sx=sk?(Math.random()*2-1)*sk:0,sy=sk?(Math.random()*2-1)*sk*0.7:0;var RS=window.RosadoRS||2;g.setTransform(RS,0,0,RS,sx*RS,sy*RS);g.imageSmoothingEnabled=Math.abs(RS-2)>0.05;g.imageSmoothingQuality='low';var cx=Math.round(F.cam);
  /* background panels a,b,a(flip),b(flip) */
  var sm=spriteMode(),A4=F.stage==='airfield';for(var i=Math.floor(cx/400);i<=Math.floor((cx+w)/400);i++){var k=i%2?'b':'a',fl=A4?i%2===0:(i>>1)%2===1,x=i*400-cx,im=A4?(img('l4-bg-'+k)||bgPanel4(k)):sm&&img('l3-bg-'+k)?img('l3-bg-'+k):bgPanel(k);
   g.save();if(fl){g.translate(x+400,0);g.scale(-1,1);g.drawImage(im,0,0,400,225)}else g.drawImage(im,x,0,400,225);g.restore()}
@@ -434,11 +443,13 @@ function portrait(cv,who){var g=cv.getContext('2d');g.setTransform(1,0,0,1,0,0);
  var gr=g.createLinearGradient(0,0,0,cv.height);gr.addColorStop(0,'#3a1a58');gr.addColorStop(1,'#0a0618');g.fillStyle=gr;g.fillRect(0,0,cv.width,cv.height);
  if(im){g.imageSmoothingEnabled=true;g.drawImage(im,0,0,cv.width,cv.height);return}
  var k=cv.width/24;g.setTransform(k,0,0,k,0,0);if(who==='manny'||who==='aces'){var C=COL[who];g.fillStyle=C.top;g.fillRect(3,18,18,6);g.fillStyle=C.skin;g.fillRect(7,6,10,12);g.fillStyle=C.hair;g.fillRect(7,4,10,who==='manny'?2:4);g.fillStyle='#111';if(who==='aces')g.fillRect(8,10,8,2);else{g.fillRect(9,10,2,1);g.fillRect(13,10,2,1)}g.fillRect(9,15,6,1);return}g.fillStyle='#b593d9';g.fillRect(3,18,18,6);g.fillStyle='#111';g.fillRect(10,18,4,6);g.fillStyle='#c99070';g.fillRect(7,6,10,12);g.fillStyle='#d8d8de';g.fillRect(7,4,10,4);g.fillStyle='#222';g.fillRect(9,14,6,1);g.fillRect(9,10,2,1);g.fillRect(13,10,2,1)}
-function figH(e){var k=frameOf(e),m=SPR[k]&&META[k];return m?m[1]/2:COL[e.type].h}
+function figH(e){var k=frameOf(e),m=SPR[k]&&META[k];return m?m[1]/2*scOf(e):COL[e.type].h}
+/* which way the drawn figure looks on screen (1 right, -1 left), for tests */
+function visFace(e){var k=frameOf(e);if(spriteMode()&&SPR[k]){var f=e.face!==artFace(e,k);return f?-artFace(e,k):artFace(e,k)}return e.face}
 function snap(){if(!F)return null;var p=F.player,b=F.boss;
  return {stage:F.stage,boarding:!!F.boarding,duo:F.duo?F.duo.map(function(e){return {type:e.type,name:TYPES[e.type].name,hp:e.hp,max:e.max,st:e.st,enraged:!!e.enraged}}):null,st:F.st,time:F.time,cam:F.cam,lock:F.lock,wave:F.wave+1,waves:F.waves.length,go:F.go,score:F.score,lives:F.lives,auto:AUTO,rage:F.rage,rageMax:RAGE_MAX,fxNow:{slow:F.slowT>0,shake:F.shakeT>0,flash:F.flashT>0,rings:F.fx.filter(function(f){return f.k==='ring'}).length},story:F.story.slice(),
   player:{x:p.x,y:p.y,z:p.z,hp:p.hp,st:p.st,face:p.face,weapon:p.weapon,atk:p.atk,inv:p.inv,t:p.t,frame:frameOf(p),h:figH(p)},
-  enemies:F.enemies.map(function(e){return {type:e.type,hp:e.hp,max:e.max,st:e.st,x:e.x,y:e.y,z:e.z,flash:e.flash,vx:e.vx,h:figH(e),frame:frameOf(e)}}),
+  enemies:F.enemies.map(function(e){return {type:e.type,hp:e.hp,max:e.max,st:e.st,x:e.x,y:e.y,z:e.z,flash:e.flash,vx:e.vx,h:figH(e),frame:frameOf(e),face:e.face,look:visFace(e)}}),
   boss:b?{hp:b.hp,max:b.max,st:b.st,half:F.bossHalf}:null,items:F.items.filter(function(i){return !i.taken}).map(function(i){return {k:i.k,x:i.x,y:i.y}}),
   breaks:F.breaks.filter(function(b){return b.st==='ok'}).length,car:{dmg:F.car.dmg,x:F.car.x,gone:F.car.gone,richieIn:F.car.richieIn},ehud:F.ehud?{name:TYPES[F.ehud.e.type].name,hp:F.ehud.e.hp,max:F.ehud.e.max}:null,
   stats:JSON.parse(JSON.stringify(F.stats)),LEN:LEN,W:W,sprites:spriteMode()}}
@@ -451,5 +462,5 @@ var dev={rage:function(n){F.rage=n},speed:function(k){SPEED=Math.max(1,k|0)},hp:
  bossHp:function(n){if(F.boss)F.boss.hp=n},clearWave:function(){F.waveQ=[];F.enemies.forEach(function(e){if(e.type!=='jefe')e.st='gone'})},
  freeze:function(i,on){if(F.enemies[i])F.enemies[i].cd=on?99:0.5},place:function(x,y){F.player.x=x;if(y)F.player.y=y}};
 window.RosadoFight={start:start,update:update,render:render,move:move,press:press,hold:hold,go:go,ending:ending,driveOff:driveOff,board:board,stage:function(){return STAGE},cutscene:cutscene,cutDone:cutDone,summary:function(){return F?summary():null},META:META,retryWave:retryWave,setAuto:setAuto,auto:function(){return AUTO},
- on:on,snap:snap,portrait:portrait,loadSprites:loadSprites,spriteMode:spriteMode,sprites:SPR,SLOTS:SLOTS,dev:dev,state:function(){return F},LEN:LEN,TYPES:TYPES,WAVES:WAVES};
+ on:on,snap:snap,portrait:portrait,loadSprites:loadSprites,spriteMode:spriteMode,sprites:SPR,SLOTS:SLOTS,dev:dev,state:function(){return F},LEN:LEN,TYPES:TYPES,WAVES:WAVES,EATK:EATK,JEFE_SC:JEFE_SC,SF:SF,SFK:SFK,artFace:artFace,visFace:visFace};
 })();

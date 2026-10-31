@@ -28,7 +28,7 @@ function path(t){var x,y,s,r;
 function render(g,W,t){if(!P)return;var bg=SPR['l4-fly-bg'],pl=SPR['l4-plane'],k=P.t;
  /* camera: start on the left of the picture, pan toward the hilltop mansion on the right */
  var pan=ease(k/9);
- if(bg){var sc=Math.max(W/bg.width,H/bg.height),bw=bg.width*sc,bh=bg.height*sc,ox=-(bw-W)*lerp(0.15,1,pan),oy=H-bh;g.imageSmoothingEnabled=true;g.drawImage(bg,ox,oy,bw,bh);g.imageSmoothingEnabled=false}
+ if(bg){var sc=Math.max(W/bg.width,H/bg.height),bw=bg.width*sc,bh=bg.height*sc,ox=-(bw-W)*lerp(0.15,1,pan),oy=H-bh;g.imageSmoothingEnabled=true;g.drawImage(bg,ox,oy,bw,bh);g.imageSmoothingEnabled=!!window.RosadoSmooth}
  else{var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#0a0420');gr.addColorStop(0.7,'#3a1450');gr.addColorStop(1,'#120818');g.fillStyle=gr;g.fillRect(0,0,W,H);
   g.fillStyle='#fff';P.stars.forEach(function(s){g.globalAlpha=0.4+0.6*s.b;g.fillRect(s.x*W,s.y*H,1,1)});g.globalAlpha=1;
   g.fillStyle='#ff6fb5';g.beginPath();g.arc(W*0.8,H*0.2,18,0,Math.PI*2);g.fill();

@@ -223,9 +223,11 @@ function cruiseR(){var p=prog();return [lerp(CFG.cruise[0][0],CFG.cruise[1][0],p
 function arrive(){if(MODE==='chase'){D.tgt.turn=0.01;D.traffic.forEach(function(c){c.done=true})}D.st='arrive';D.arriveT=0;D.boost=0;D.bikers.forEach(function(b){if(b.st!=='spin')b.st='leave'});if(D.van)D.van.leave=true;D.haz=D.haz.filter(function(h){return h.z<0});sfx('chime');emit('arrive')}
 
 /* ---------- render ---------- */
-var skyCache=null,skyW=0;
+var skyCache=null,skyW=0,skyS=0;
+/* v0.6.3: the sky cache is built at up to 2x (the sky art is ~1.8x) and drawn at its logical size */
+function skyScale(){return Math.min(2,Math.max(1,window.RosadoRS||1))}
 function makeSky(W){
- var c=document.createElement('canvas');c.width=W+24;c.height=H;var g=c.getContext('2d');
+ var c=document.createElement('canvas'),CS=skyScale();c.width=Math.round((W+24)*CS);c.height=Math.round(H*CS);var g=c.getContext('2d');g.setTransform(CS,0,0,CS,0,0);
  var SK=MODE==='chase'?SPR.sky4:SPR.sky;if(SK){var im=SK,k=(W+24)/im.width,h=im.height*k,oy=Math.min(0,HY-0.76*h);g.imageSmoothingEnabled=true;g.drawImage(im,0,oy,W+24,h);
   var bot=oy+h;if(bot<H){g.fillStyle='#050416';g.fillRect(0,bot-1,W+24,H-bot+1)}}
  else{var gr=g.createLinearGradient(0,0,0,HY);gr.addColorStop(0,'#05061e');gr.addColorStop(0.7,'#1a0b3e');gr.addColorStop(1,'#3a0f55');g.fillStyle=gr;g.fillRect(0,0,W+24,HY);
@@ -269,7 +271,7 @@ function neonText(g,txt,x,y,size,col){g.save();g.font='900 '+size+'px "Arial Bla
 function drawArrival(g,W,t){
  var k,ox,oy,iw=800,ih=450;
  if(MODE==='chase'){drawAirfield(g,W,t);return}
- if(SPR.gym){k=Math.max(W/iw,H/ih);ox=(W-iw*k)/2;oy=(H-ih*k)/2;g.imageSmoothingEnabled=true;g.drawImage(SPR.gym,ox,oy,iw*k,ih*k);g.imageSmoothingEnabled=false}
+ if(SPR.gym){k=Math.max(W/iw,H/ih);ox=(W-iw*k)/2;oy=(H-ih*k)/2;g.imageSmoothingEnabled=true;g.drawImage(SPR.gym,ox,oy,iw*k,ih*k);g.imageSmoothingEnabled=!!window.RosadoSmooth}
  else{k=Math.max(W/iw,H/ih);ox=(W-iw*k)/2;oy=(H-ih*k)/2;var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#070826');gr.addColorStop(1,'#1a0b30');g.fillStyle=gr;g.fillRect(0,0,W,H);
   g.fillStyle='#3a1e22';g.fillRect(ox+200*k,oy+80*k,420*k,330*k);g.fillStyle='#2a1418';for(var yy=oy+80*k;yy<oy+410*k;yy+=4)g.fillRect(ox+200*k,yy,420*k,1);
   g.fillStyle='#ffcf7a';g.fillRect(ox+360*k,oy+280*k,100*k,130*k);g.strokeStyle='#ff3ad8';g.lineWidth=2;g.strokeRect(ox+315*k,oy+109*k,197*k,71*k);
@@ -283,7 +285,7 @@ function drawArrival(g,W,t){
  var tl=by-w*(SPR.car?SPR.car.height/SPR.car.width:0.8)*0.48;g.globalCompositeOperation='lighter';glow(g,sx-w*0.36,tl,w*0.12,'rgba(255,40,70,0.9)');glow(g,sx+w*0.36,tl,w*0.12,'rgba(255,40,70,0.9)');g.globalCompositeOperation='source-over';
 }
 function drawAirfield(g,W,t){var k=Math.max(W/800,H/450),ox=(W-800*k)/2,oy=(H-450*k)/2;
- if(SPR.air){g.imageSmoothingEnabled=true;g.drawImage(SPR.air,ox,oy,800*k,450*k);g.imageSmoothingEnabled=false}
+ if(SPR.air){g.imageSmoothingEnabled=true;g.drawImage(SPR.air,ox,oy,800*k,450*k);g.imageSmoothingEnabled=!!window.RosadoSmooth}
  else{var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#060418');gr.addColorStop(1,'#1a0b30');g.fillStyle=gr;g.fillRect(0,0,W,H);g.fillStyle='#2a2036';g.fillRect(W*0.5,40,W*0.5,90);g.fillStyle='#ffcf8a';g.fillRect(W*0.56,60,W*0.4,70);g.fillStyle='#ff3ad8';g.fillRect(W*0.5,38,W*0.5,3);g.fillStyle='#120a1c';g.fillRect(0,130,W,H-130)}
  var a=clamp((D.arriveT-1.5)/2.2,0,1),e=1-Math.pow(1-a,3),w=lerp(W*0.34,W*0.2,e),by=lerp(H+W*0.3,H-6,e),sx=W*0.42;
  if(SPR.car)spr(g,SPR.car,sx,by,w);else carCanvas(g,sx,by,w)}
@@ -298,10 +300,10 @@ function drawTraffic(g,c){var s=sOf(c.z);if(s<0.05)return;var im=SPR['traffic-'+
  g.globalCompositeOperation='lighter';glow(g,x-w*0.34,by-h*0.4,w*0.1,'rgba(255,40,70,0.8)');glow(g,x+w*0.34,by-h*0.4,w*0.1,'rgba(255,40,70,0.8)');g.globalCompositeOperation='source-over'}
 function render(g,W,t,pulse){
  if(!D)return;LW=clamp(W*0.18,50,88);CX=W/2;
- if(!skyCache||skyW!==W){skyCache=makeSky(W);skyW=W}
+ if(!skyCache||skyW!==W||skyS!==skyScale()){skyCache=makeSky(W);skyW=W;skyS=skyScale()}
  var sh=D.shake*2.2;g.save();g.translate(Math.round((Math.random()-0.5)*sh),Math.round((Math.random()-0.5)*sh));
  if(D.fade<1){
-  g.drawImage(skyCache,-12-Math.round(D.camU*5),0);
+  g.drawImage(skyCache,-12-Math.round(D.camU*5),0,W+24,H);
   if(pulse>0){var pg=g.createLinearGradient(0,0,0,HY);pg.addColorStop(0,'rgba(255,58,216,0)');pg.addColorStop(1,'rgba(255,58,216,'+(pulse*0.12)+')');g.fillStyle=pg;g.fillRect(0,0,W,HY)}
   /* road */
   for(var y=HY+1;y<H;y++){var s=(y-HY)/(PY-HY),z=DZ/s-DZ,cx=CX-D.camU*LW*s,lw=LW*s,zz=z+D.scroll;
