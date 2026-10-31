@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Rosado Nights · Level 1: Causeway Chase, drive Richie across the neon bridge to Shred Zeppelin. Level 2: Reps for Jesus, bench press 400 lbs, then hit the heavy bag. Level 3: The Alley, a neon street brawl with El Jefe's linen-suited bodyguards. Level 4: The Airfield, tail the yellow supercar, beat Big Manny and Aces, and fly off in the plane. Level 5: Escobar's Mansion, fly through neon rings, parachute onto the lawn and sneak past the guards. Level 6: Escobar, the final showdown: fight up the grand staircase, duel Escobar on the roof under the helicopter spotlight and chase him across the bay on a jet ski.">
 <title>Rosado Nights · Level 1: Causeway Chase</title>
-<link rel="stylesheet" href="css/game.css?v=0.6.2">
+<link rel="stylesheet" href="css/game.css?v=0.6.3">
 </head>
 <body>
 <div id="app" data-phase="intro" data-level="1">
@@ -50,15 +50,15 @@
  </div>
 
  <div id="fhud" aria-live="off">
-  <div class="fp"><canvas id="fface" width="72" height="72" aria-hidden="true"></canvas>
+  <div class="fp"><canvas id="fface" width="144" height="144" aria-hidden="true"></canvas>
    <div class="fpi"><div class="fname">RICHIE <span id="lives" aria-label="Lives">×3</span></div><div class="fbar" id="fhp" aria-label="Richie health"><i id="fhpi"></i></div>
     <div class="frw"><span>RAGE</span><div class="fbar rage" id="frage" aria-label="Rage meter"><i id="fragei"></i></div></div>
     <div class="fscore" id="score">000000</div></div></div>
   <div class="ebar" id="ebar" hidden><span id="ename">RAFA</span><div class="fbar small"><i id="ehp"></i></div></div>
   <div class="wtag" id="wtag">WAVE 1/3</div>
  </div>
- <div id="bossbar" hidden><canvas id="bface" width="48" height="48" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="bname">EL JEFE ESTEBAN LAVANDA</div><div class="fbar boss"><i id="bhp"></i></div>
-  <div class="duo2" id="duo2" hidden><canvas id="bface2" width="48" height="48" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="bname2">ACES</div><div class="fbar boss"><i id="bhp2"></i></div></div></div></div></div>
+ <div id="bossbar" hidden><canvas id="bface" width="96" height="96" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="bname">EL JEFE ESTEBAN LAVANDA</div><div class="fbar boss"><i id="bhp"></i></div>
+  <div class="duo2" id="duo2" hidden><canvas id="bface2" width="96" height="96" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="bname2">ACES</div><div class="fbar boss"><i id="bhp2"></i></div></div></div></div></div>
  <div id="goArrow" hidden>GO <b>→</b></div>
  <button id="autoBtn" type="button" aria-pressed="false" aria-label="Auto fight: Richie fights by himself">
   <svg class="fist" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10h11a3 3 0 0 1 0 6h-1v3H8a2 2 0 0 1-2-2z" fill="currentColor"/><path d="M8 10V7a1.5 1.5 0 0 1 3 0v3M11 10V6.5a1.5 1.5 0 0 1 3 0V10M14 10V7a1.5 1.5 0 0 1 3 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
@@ -82,7 +82,7 @@
    <div class="mbox chute-only"><span class="ml">HEIGHT</span><b id="mHeight">450</b><small>FT</small></div>
    <div class="mbox chute-only"><span class="ml">WIND</span><b id="mWindV">◀ 6</b><small>KT</small></div>
    <div class="mbox chute-only mtgt"><span class="ml">TARGET</span><div class="tgtbar" aria-label="Distance to the landing target: keep the marker in the middle"><em></em><i id="mTgtMark"></i></div></div>
-   <div class="mbox st-only mrich"><canvas id="mface" width="72" height="72" aria-hidden="true"></canvas><div><div class="ml">RICHIE <span id="mLives">×3</span></div><div class="mbar hp"><i id="mHpi"></i></div></div></div>
+   <div class="mbox st-only mrich"><canvas id="mface" width="144" height="144" aria-hidden="true"></canvas><div><div class="ml">RICHIE <span id="mLives">×3</span></div><div class="mbar hp"><i id="mHpi"></i></div></div></div>
    <div class="mbox st-only mdet" id="mDet"><span class="ml" id="mDetLbl">STEALTH</span><div class="mbar"><i id="mDetFill"></i></div></div>
    <div class="mbox st-only"><span class="ml">AMMO</span><b id="mAmmo">6</b><span class="ml">GUARDS</span><b id="mGuards">6</b></div>
    <div class="mbox mscore"><b id="mScore">000000</b></div>
@@ -105,7 +105,7 @@
  </div>
  <div id="ehud" aria-live="off">
   <div class="mcol">
-   <div class="mbox erich"><canvas id="eface" width="72" height="72" aria-hidden="true"></canvas><div><div class="ml">RICHIE <span id="eLives">×3</span></div><div class="mbar hp"><i id="eHpi"></i></div>
+   <div class="mbox erich"><canvas id="eface" width="144" height="144" aria-hidden="true"></canvas><div><div class="ml">RICHIE <span id="eLives">×3</span></div><div class="mbar hp"><i id="eHpi"></i></div>
     <div class="mbar rage e-brawl" id="eRage" aria-label="Rage meter"><i id="eRagei"></i></div></div></div>
    <div class="mbox e-brawl ewpn" id="eWpn"><span class="ml">WEAPON</span><b id="eWpnN">FISTS</b><small id="eWpnU"></small></div>
    <div class="mbox e-brawl"><b id="eWaveT">TANK</b></div>
@@ -116,7 +116,7 @@
    <div class="mbox mscore"><b id="eScore">000000</b></div>
   </div>
  </div>
- <div id="ebossbar" hidden><canvas id="ebface" width="48" height="48" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="ebname">ESCOBAR</div><div class="fbar boss"><i id="ebhp"></i></div></div></div>
+ <div id="ebossbar" hidden><canvas id="ebface" width="96" height="96" aria-hidden="true"></canvas><div class="bb"><div class="bname" id="ebname">ESCOBAR</div><div class="fbar boss"><i id="ebhp"></i></div></div></div>
  <button id="eAuto" type="button" aria-pressed="false" aria-label="Auto: Richie fights, climbs and rides by himself">
   <svg class="fist" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10h11a3 3 0 0 1 0 6h-1v3H8a2 2 0 0 1-2-2z" fill="currentColor"/><path d="M8 10V7a1.5 1.5 0 0 1 3 0v3M11 10V6.5a1.5 1.5 0 0 1 3 0V10M14 10V7a1.5 1.5 0 0 1 3 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
   <span class="slab" id="eAutoLbl">AUTO FIGHT</span><span class="sstate" id="eAutoState">OFF</span></button>
@@ -281,13 +281,13 @@
  </div>
 </div>
 <script src="../theme.js?v=0.6.2"></script>
-<script src="js/sfx.js?v=0.6.2"></script>
-<script src="js/drive.js?v=0.6.2"></script>
-<script src="js/fight.js?v=0.6.2"></script>
-<script src="js/plane.js?v=0.6.2"></script>
-<script src="js/mansion.js?v=0.6.2"></script>
-<script src="js/escobar.js?v=0.6.2"></script>
-<script src="js/art.js?v=0.6.2"></script>
-<script src="js/game.js?v=0.6.2"></script>
+<script src="js/sfx.js?v=0.6.3"></script>
+<script src="js/drive.js?v=0.6.3"></script>
+<script src="js/fight.js?v=0.6.3"></script>
+<script src="js/plane.js?v=0.6.3"></script>
+<script src="js/mansion.js?v=0.6.3"></script>
+<script src="js/escobar.js?v=0.6.3"></script>
+<script src="js/art.js?v=0.6.3"></script>
+<script src="js/game.js?v=0.6.3"></script>
 </body>
 </html>
